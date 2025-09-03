@@ -1,0 +1,1320 @@
+{% extends "base.html" %}
+
+{% block title %}Register - BazaarHub{% endblock %}
+
+{% block content %}
+<style>
+    .form-container {
+        max-width: 900px;
+        margin: 3rem auto;
+        padding: 0;
+        background-color: transparent;
+    }
+    
+    .card {
+        background-color: var(--card);
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-5px);
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+        color: white;
+        padding: 1.5rem;
+        border: none;
+    }
+    
+    .card-header h3 {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 2rem;
+    }
+    
+    .form-title {
+        color: var(--ink);
+        margin-bottom: 1.5rem;
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .account-type-toggle {
+        display: flex;
+        margin-bottom: 2rem;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 0.25rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    
+    .toggle-btn {
+        flex: 1;
+        text-align: center;
+        padding: 1rem;
+        cursor: pointer;
+        background-color: transparent;
+        border: none;
+        border-radius: 6px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    
+    .toggle-btn.active {
+        background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+        color: white;
+        box-shadow: 0 4px 8px rgba(17, 20, 57, 0.2);
+    }
+    
+    .vendor-fields, .buyer-fields {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .section-divider {
+        display: flex;
+        align-items: center;
+        margin: 1.5rem 0;
+        color: var(--ink-light);
+    }
+    
+    .section-divider hr {
+        flex: 1;
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+    
+    .section-divider span {
+        padding: 0 1rem;
+        font-weight: 500;
+    }
+    
+    .form-label {
+        color: var(--ink);
+        font-weight: 500;
+        margin-bottom: 0.5rem;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #e2e8f0;
+        padding: 0.75rem 1rem;
+        font-size: 1rem;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+        border-color: var(--ring);
+        box-shadow: 0 0 0 3px rgba(76, 111, 255, 0.15);
+    }
+    
+    .input-group-text {
+        background-color: var(--bg-light);
+        border-color: #ced4da;
+        color: var(--ink-light);
+    }
+    
+    .btn-primary {
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-color: #e2e8f0;
+        color: var(--ink);
+    }
+    
+    .form-text {
+        color: var(--muted);
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+    }
+    
+    .password-strength {
+        height: 5px;
+        margin-top: 8px;
+        border-radius: 5px;
+        transition: all 0.3s;
+    }
+    
+    .validation-feedback {
+        font-size: 0.875rem;
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+    
+    .validation-feedback:before {
+        content: '';
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-right: 6px;
+        background-size: contain;
+    }
+    
+    .is-valid {
+        border-color: #10b981;
+    }
+    
+    .is-invalid {
+        border-color: #ef4444;
+    }
+    
+    .valid-feedback {
+        color: #10b981;
+    }
+    
+    .valid-feedback:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%2310b981' viewBox='0 0 16 16'%3E%3Cpath d='M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z'/%3E%3C/svg%3E");
+    }
+    
+    .invalid-feedback {
+        color: #ef4444;
+    }
+    
+    .invalid-feedback:before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%23ef4444' viewBox='0 0 16 16'%3E%3Cpath d='M4.293 4.293a1 1 0 011.414 0L8 6.586l2.293-2.293a1 1 0 111.414 1.414L9.414 8l2.293 2.293a1 1 0 01-1.414 1.414L6.586 8 4.293 5.707a1 1 0 010-1.414z'/%3E%3C/svg%3E");
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, var(--grad-b), var(--grad-c));
+        border: none;
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px rgba(76, 111, 255, 0.2);
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, var(--grad-a), var(--grad-b));
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(76, 111, 255, 0.25);
+    }
+    
+    .btn-secondary {
+        background-color: #f8f9fa;
+        color: var(--ink);
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+    }
+    
+    .btn-secondary:hover {
+        background-color: #e9ecef;
+    }
+    
+    .toast-container {
+        z-index: 1050;
+    }
+    
+    .section-divider {
+        display: flex;
+        align-items: center;
+        margin: 1.5rem 0;
+    }
+    
+    .section-divider hr {
+        flex: 1;
+        border-color: #e2e8f0;
+    }
+    
+    .section-divider span {
+        padding: 0 1rem;
+        color: var(--muted);
+        font-weight: 500;
+    }
+    
+    .mb-4 {
+        margin-bottom: 1.5rem;
+    }
+    
+    .row {
+        margin-bottom: 1.25rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1.5rem;
+        }
+        
+        .form-container {
+            margin: 1rem auto;
+        }
+    }
+</style>
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <div class="card shadow">
+                <div class="card-header" style="background: linear-gradient(135deg, var(--grad-a), var(--grad-b)); color: white;">
+                    <h3 class="mb-0">Create Your BazaarHub Account</h3>
+                </div>
+                <div class="card-body">
+                    <!-- Account Type Toggle -->
+                    <div class="account-type-toggle mb-4">
+                        <div class="btn-group w-100" role="group" aria-label="Account Type">
+                            <button type="button" class="btn btn-outline-primary active" id="vendorToggle">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                                Vendor Account
+                            </button>
+                            <button type="button" class="btn btn-outline-primary" id="buyerToggle">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="me-2"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                                Buyer Account
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted mb-4 text-center">Join BazaarHub to connect with buyers and vendors across the marketplace. Fill in the details below to create your account.</p>
+                    
+                    <form id="registerForm" action="/api/register" method="post">
+                        <input type="hidden" id="accountType" name="accountType" value="vendor">
+                        
+                        <div class="section-divider">
+                            <hr>
+                            <span>Account Information</span>
+                            <hr>
+                        </div>
+                        
+                        <!-- Common Fields for Both Account Types -->
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"></i></span>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+                                <div class="invalid-feedback" id="emailFeedback"></div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="mobile" class="form-label">Mobile Number <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <select class="form-select" id="countryCode" name="countryCode" style="max-width: 120px;">
+                                        <option value="+92">+92 (PK)</option>
+                                        <option value="+1">+1 (US)</option>
+                                        <option value="+44">+44 (UK)</option>
+                                    </select>
+                                    <input type="text" class="form-control" id="mobile" name="mobile" required>
+                                </div>
+                                <div class="invalid-feedback" id="mobileFeedback"></div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="website" class="form-label">Website/Social Link</label>
+                                <input type="url" class="form-control" id="website" name="website" placeholder="https://example.com">
+                                <div class="form-text">Optional: Enter your website or social media profile link</div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="password" class="form-label">Password <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="password" name="password" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="password-strength mt-2 mb-3" id="passwordStrength" style="min-height: 30px;">
+                                    <div class="progress" style="height: 5px;">
+                                        <div class="progress-bar" id="passwordStrengthBar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <small class="form-text" id="passwordStrengthText">Password strength</small>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="confirmPassword" class="form-label">Confirm Password <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                    <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="toggleConfirmPassword">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="mt-2 mb-3" id="passwordMatch" style="min-height: 24px;">
+                                    <small class="form-text text-muted">Type to confirm password</small>
+                                </div>
+                                <div class="invalid-feedback" id="confirmPasswordFeedback"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- Vendor-specific Fields -->
+                        <div id="vendorFields">
+                            <div class="section-divider">
+                                <hr>
+                                <span>Vendor Information</span>
+                                <hr>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="ntn" class="form-label">NTN <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-id-card"></i></span>
+                                        <input type="text" class="form-control" id="ntn" name="ntn" required>
+                                    </div>
+                                    <div class="invalid-feedback" id="ntnFeedback"></div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="businessName" class="form-label">Business Name <span class="text-danger">*</span></label>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-building"></i></span>
+                                        <input type="text" class="form-control" id="businessName" name="businessName" required>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="ownerName" class="form-label">Owner Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="ownerName" name="ownerName" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="establishmentYear" class="form-label">Establishment Year <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="establishmentYear" name="establishmentYear" min="1900" max="2025" placeholder="YYYY" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="businessCategory" class="form-label">Business Category <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="businessCategory" name="businessCategory" required>
+                                        <option value="">Select Business Category</option>
+                                        <option value="Clothing">Clothing</option>
+                                        <option value="Electrical & Telecom">Electrical & Telecom</option>
+                                        <option value="Electronics">Electronics</option>
+                                        <option value="Freelancer">Freelancer</option>
+                                        <option value="Freight Forwarder">Freight Forwarder</option>
+                                        <option value="General & Janitorial">General & Janitorial</option>
+                                        <option value="Home Light & Decoration">Home Light & Decoration</option>
+                                        <option value="Information Technology">Information Technology</option>
+                                        <option value="Laboratory Equipment & Consumable">Laboratory Equipment & Consumable</option>
+                                        <option value="Logistics & Transportation">Logistics & Transportation</option>
+                                        <option value="Mechanical">Mechanical</option>
+                                        <option value="Packaging Material">Packaging Material</option>
+                                        <option value="Plumbing & Sanitary">Plumbing & Sanitary</option>
+                                        <option value="Promotional & Gift Items">Promotional & Gift Items</option>
+                                        <option value="Raw Material / Chemical">Raw Material / Chemical</option>
+                                        <option value="Software / Web Development">Software / Web Development</option>
+                                        <option value="Toys">Toys</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="businessType" class="form-label">Business Type <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="businessType" name="businessType" required>
+                                        <option value="">Select Business Type</option>
+                                        <option value="Distributor">Distributor</option>
+                                        <option value="General Order">General Order</option>
+                                        <option value="Importer">Importer</option>
+                                        <option value="Manufacturer">Manufacturer</option>
+                                        <option value="Retailer">Retailer</option>
+                                        <option value="Service Provider">Service Provider</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="landline" class="form-label">Landline with country code</label>
+                                    <div class="input-group">
+                                        <select class="form-select" id="landlineCode" name="landlineCode" style="max-width: 120px;">
+                                            <option value="+92">+92 (PK)</option>
+                                            <option value="+1">+1 (US)</option>
+                                            <option value="+44">+44 (UK)</option>
+                                        </select>
+                                        <input type="text" class="form-control" id="landline" name="landline">
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="vendorGender" class="form-label">Gender <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="vendorGender" name="vendorGender" required>
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Others">Others</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Buyer-specific Fields -->
+                        <div id="buyerFields" style="display: none;">
+                            <h5 class="mt-4 mb-3">Buyer Information</h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="buyerName" class="form-label">Buyer Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="buyerName" name="buyerName">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="buyerCompanyName" class="form-label">Company Name <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="buyerCompanyName" name="buyerCompanyName">
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="buyerDesignation" class="form-label">Designation <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="buyerDesignation" name="buyerDesignation">
+                                        <option value="">Select Designation</option>
+                                        <option value="Director">Director</option>
+                                        <option value="Executive">Executive</option>
+                                        <option value="Manager / Sr. Manager">Manager / Sr. Manager</option>
+                                        <option value="Officer">Officer</option>
+                                        <option value="Owner / CEO">Owner / CEO</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="buyerGender" class="form-label">Gender <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="buyerGender" name="buyerGender">
+                                        <option value="">Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Others">Others</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Common Location Fields -->
+                        <h5 class="mt-4 mb-3">Location Information</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-12 mb-3">
+                                <label for="address" class="form-label">Address <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="address" name="address" required>
+                                    <button class="btn btn-outline-secondary" type="button" id="getLocationBtn">
+                                        <i class="fas fa-map-marker-alt"></i> Get Location
+                                    </button>
+                                </div>
+                                <div class="invalid-feedback">Please enter your address.</div>
+                                <div class="valid-feedback">Location captured successfully!</div>
+                                <input type="hidden" id="latitude" name="latitude">
+                                <input type="hidden" id="longitude" name="longitude">
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="country" class="form-label">Country <span class="text-danger">*</span></label>
+                                <select class="form-select" id="country" name="country" required>
+                                    <option value="">Select Country</option>
+                                    <!-- Countries will be loaded dynamically -->
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="state" class="form-label">State/Province <span class="text-danger">*</span></label>
+                                <select class="form-select" id="state" name="state" required>
+                                    <option value="">Select State</option>
+                                    <!-- States will be loaded based on country selection -->
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="city" class="form-label">City <span class="text-danger">*</span></label>
+                                <select class="form-select" id="city" name="city" required>
+                                    <option value="">Select City</option>
+                                    <!-- Cities will be loaded based on state selection -->
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="postalCode" class="form-label">Postal / Zip Code <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="postalCode" name="postalCode" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="website" class="form-label">Website/Social Link</label>
+                                <input type="url" class="form-control" id="website" name="website" placeholder="https://example.com">
+                                <div class="form-text">Optional: Enter your website or social media profile link</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="termsCheck" required>
+                            <label class="form-check-label" for="termsCheck">I agree to the <a href="#">Terms and Conditions</a></label>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary py-2">Register Account</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-center">
+                    Already have an account? <a href="/">Login here</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Account type toggle functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const vendorToggle = document.getElementById('vendorToggle');
+    const buyerToggle = document.getElementById('buyerToggle');
+    const vendorFields = document.getElementById('vendorFields');
+    const buyerFields = document.getElementById('buyerFields');
+    const accountType = document.getElementById('accountType');
+    
+    // Form elements
+    const emailInput = document.getElementById('email');
+    const mobileInput = document.getElementById('mobile');
+    const ntnInput = document.getElementById('ntn');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const getLocationBtn = document.getElementById('getLocationBtn');
+    const latitudeInput = document.getElementById('latitude');
+    const longitudeInput = document.getElementById('longitude');
+    
+    // Geolocation functionality
+    if (getLocationBtn) {
+        getLocationBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        latitudeInput.value = position.coords.latitude;
+                        longitudeInput.value = position.coords.longitude;
+                        
+                        // Show success message and update address field
+                        const addressInput = document.getElementById('address');
+                        if (addressInput) {
+                            addressInput.classList.add('is-valid');
+                            addressInput.classList.remove('is-invalid');
+                            
+                            // Use reverse geocoding to get address from coordinates
+                            fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data && data.display_name) {
+                                        addressInput.value = data.display_name;
+                                    } else {
+                                        addressInput.value = `Location captured: ${position.coords.latitude}, ${position.coords.longitude}`;
+                                    }
+                                })
+                                .catch(error => {
+                                    console.error('Error getting address:', error);
+                                    addressInput.value = `Location captured: ${position.coords.latitude}, ${position.coords.longitude}`;
+                                });
+                        }
+                    },
+                    function(error) {
+                        console.error('Error getting location:', error);
+                        alert('Unable to get your location. Please enter your address manually.');
+                    }
+                );
+            } else {
+                alert('Geolocation is not supported by your browser. Please enter your address manually.');
+            }
+        });
+    }
+    
+    // Country, State, City dropdowns
+    const countrySelect = document.getElementById('country');
+    const stateSelect = document.getElementById('state');
+    const citySelect = document.getElementById('city');
+    
+    // Load countries on page load
+    loadCountries();
+    
+    // Update states when country changes
+    if (countrySelect) {
+        countrySelect.addEventListener('change', function() {
+            const countryId = this.value;
+            if (countryId) {
+                loadStates(countryId);
+                updateCountryCode(countryId);
+            } else {
+                stateSelect.innerHTML = '<option value="">Select State</option>';
+                citySelect.innerHTML = '<option value="">Select City</option>';
+            }
+        });
+    }
+    
+    // Update cities when state changes
+    if (stateSelect) {
+        stateSelect.addEventListener('change', function() {
+            const stateId = this.value;
+            if (stateId) {
+                loadCities(stateId);
+            } else {
+                citySelect.innerHTML = '<option value="">Select City</option>';
+            }
+        });
+    }
+    
+    function loadCountries() {
+        fetch('/api/taxonomy/countries')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                let options = '<option value="">Select Country</option>';
+                // Check if data is an array before sorting
+                const countries = Array.isArray(data) ? data : (data.countries || []);
+                
+                if (countries.length === 0) {
+                    // If no countries are returned, use fallback data
+                    throw new Error('No countries data available');
+                }
+                
+                // Sort countries alphabetically and filter if needed
+                countries.sort((a, b) => a.name.localeCompare(b.name))
+                    .filter(country => country.name.toLowerCase() !== 'israel')
+                    .forEach(country => {
+                        options += `<option value="${country.id}">${country.name}</option>`;
+                    });
+                countrySelect.innerHTML = options;
+            })
+            .catch(error => {
+                console.error('Error loading countries:', error);
+                // Fallback with sample data
+                let options = '<option value="">Select Country</option>';
+                options += '<option value="1">Pakistan</option>';
+                options += '<option value="2">United States</option>';
+                options += '<option value="3">United Kingdom</option>';
+                countrySelect.innerHTML = options;
+            });
+    }
+    
+    function loadStates(countryId) {
+        fetch(`/api/taxonomy/states/${countryId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                let options = '<option value="">Select State</option>';
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('No states data available');
+                }
+                data.sort((a, b) => a.name.localeCompare(b.name))
+                    .forEach(state => {
+                        options += `<option value="${state.id}">${state.name}</option>`;
+                    });
+                stateSelect.innerHTML = options;
+                citySelect.innerHTML = '<option value="">Select City</option>';
+            })
+            .catch(error => {
+                console.error('Error loading states:', error);
+                // Fallback with sample data
+                let options = '<option value="">Select State</option>';
+                if (countryId == 1) { // Pakistan
+                    options += '<option value="1">Punjab</option>';
+                    options += '<option value="2">Sindh</option>';
+                    options += '<option value="3">Khyber Pakhtunkhwa</option>';
+                } else if (countryId == 2) { // United States
+                    options += '<option value="5">California</option>';
+                    options += '<option value="6">New York</option>';
+                    options += '<option value="7">Texas</option>';
+                } else if (countryId == 3) { // United Kingdom
+                    options += '<option value="8">England</option>';
+                    options += '<option value="9">Scotland</option>';
+                    options += '<option value="10">Wales</option>';
+                }
+                stateSelect.innerHTML = options;
+            });
+    }
+    
+    function loadCities(stateId) {
+        fetch(`/api/taxonomy/cities/${stateId}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                let options = '<option value="">Select City</option>';
+                if (!Array.isArray(data) || data.length === 0) {
+                    throw new Error('No cities data available');
+                }
+                data.sort((a, b) => a.name.localeCompare(b.name))
+                    .forEach(city => {
+                        options += `<option value="${city.id}">${city.name}</option>`;
+                    });
+                citySelect.innerHTML = options;
+            })
+            .catch(error => {
+                console.error('Error loading cities:', error);
+                // Fallback with sample data
+                let options = '<option value="">Select City</option>';
+                if (stateId == 1) { // Punjab
+                    options += '<option value="1">Lahore</option>';
+                    options += '<option value="2">Faisalabad</option>';
+                    options += '<option value="3">Rawalpindi</option>';
+                } else if (stateId == 2) { // Sindh
+                    options += '<option value="4">Karachi</option>';
+                    options += '<option value="5">Hyderabad</option>';
+                    options += '<option value="6">Sukkur</option>';
+                } else if (stateId == 5) { // California
+                    options += '<option value="7">Los Angeles</option>';
+                    options += '<option value="8">San Francisco</option>';
+                    options += '<option value="9">San Diego</option>';
+                } else if (stateId == 8) { // England
+                    options += '<option value="13">London</option>';
+                    options += '<option value="14">Manchester</option>';
+                    options += '<option value="15">Birmingham</option>';
+                }
+                citySelect.innerHTML = options;
+            });
+    }
+    
+    function updateCountryCode(countryId) {
+        const countryCodes = {
+            '1': '+92', // Pakistan
+            '2': '+1',  // United States
+            '3': '+44'  // United Kingdom
+        };
+        
+        const countryCode = countryCodes[countryId] || '';
+        const countryCodeInput = document.getElementById('countryCode');
+        const landlineCountryCodeInput = document.getElementById('landlineCountryCode');
+        
+        if (countryCodeInput) countryCodeInput.value = countryCode;
+        if (landlineCountryCodeInput) landlineCountryCodeInput.value = countryCode;
+    }
+    
+    // Form submission
+    const registerForm = document.getElementById('registerForm');
+    if (registerForm) {
+        registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate all fields
+            const isEmailValid = validateEmail(emailInput.value);
+            const isMobileValid = validateMobile(mobileInput.value);
+            const isPasswordValid = checkPasswordStrength(passwordInput.value);
+            const isConfirmPasswordValid = validateConfirmPassword(passwordInput.value, confirmPasswordInput.value);
+            
+            let isNtnValid = true;
+            if (accountType.value === 'vendor' && ntnInput) {
+                isNtnValid = validateNTN(ntnInput.value);
+            }
+            
+            if (isEmailValid && isMobileValid && isPasswordValid && isConfirmPasswordValid && isNtnValid) {
+                // Prepare form data
+                const formData = new FormData(registerForm);
+                
+                // Submit the form via AJAX
+                fetch('/api/register', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        showToast('Registration successful! Redirecting to login page...', 'success');
+                        
+                        // Redirect to login page after 2 seconds
+                        setTimeout(() => {
+                            window.location.href = '/';
+                        }, 2000);
+                    } else {
+                        // Show error message
+                        showToast(data.message || 'Registration failed. Please try again.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting form:', error);
+                    showToast('An error occurred. Please try again later.', 'error');
+                });
+            } else {
+                // Show error message
+                showToast('Please fix the errors in the form before submitting.', 'error');
+            }
+        });
+    }
+    
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        // Create toast container if it doesn't exist
+        let toastContainer = document.querySelector('.toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast element
+        const toastId = 'toast-' + Date.now();
+        const toast = document.createElement('div');
+        toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'primary'} border-0`;
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.setAttribute('id', toastId);
+        
+        // Toast content
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+        
+        // Add toast to container
+        toastContainer.appendChild(toast);
+        
+        // Initialize and show toast
+        const bsToast = new bootstrap.Toast(toast);
+        bsToast.show();
+        
+        // Remove toast after it's hidden
+        toast.addEventListener('hidden.bs.toast', function() {
+            toast.remove();
+        });
+    }
+    
+    // Account type toggle
+    vendorToggle.addEventListener('click', function() {
+        vendorToggle.classList.add('active');
+        buyerToggle.classList.remove('active');
+        vendorFields.style.display = 'block';
+        buyerFields.style.display = 'none';
+        accountType.value = 'vendor';
+        
+        // Update required attributes for vendor fields
+        document.querySelectorAll('#vendorFields input, #vendorFields select').forEach(el => {
+            el.required = true;
+        });
+        
+        document.querySelectorAll('#buyerFields input, #buyerFields select').forEach(el => {
+            el.required = false;
+        });
+    });
+    
+    buyerToggle.addEventListener('click', function() {
+        buyerToggle.classList.add('active');
+        vendorToggle.classList.remove('active');
+        buyerFields.style.display = 'block';
+        vendorFields.style.display = 'none';
+        accountType.value = 'buyer';
+        
+        // Update required attributes for buyer fields
+        document.querySelectorAll('#buyerFields input, #buyerFields select').forEach(el => {
+            el.required = true;
+        });
+        
+        document.querySelectorAll('#vendorFields input, #vendorFields select').forEach(el => {
+            el.required = false;
+        });
+    });
+    
+    // Email validation with debounce
+    let emailTimeout;
+    emailInput.addEventListener('input', function() {
+        clearTimeout(emailTimeout);
+        emailTimeout = setTimeout(() => validateEmail(emailInput.value), 500);
+    });
+    
+    // Mobile validation with debounce
+    let mobileTimeout;
+    mobileInput.addEventListener('input', function() {
+        clearTimeout(mobileTimeout);
+        mobileTimeout = setTimeout(() => validateMobile(mobileInput.value), 500);
+    });
+    
+    // NTN validation with debounce
+    let ntnTimeout;
+    if (ntnInput) {
+        ntnInput.addEventListener('input', function() {
+            clearTimeout(ntnTimeout);
+            ntnTimeout = setTimeout(() => validateNTN(ntnInput.value), 500);
+        });
+    }
+    
+    // Password strength meter
+    passwordInput.addEventListener('input', function() {
+        checkPasswordStrength(passwordInput.value);
+    });
+    
+    // Confirm password validation
+    confirmPasswordInput.addEventListener('input', function() {
+        validateConfirmPassword(passwordInput.value, confirmPasswordInput.value);
+    });
+    
+    // Validation functions
+    function validateEmail(email) {
+        if (!email) {
+            showError(emailInput, 'Email is required');
+            return false;
+        }
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showError(emailInput, 'Please enter a valid email address');
+            return false;
+        }
+        
+        // Show loading indicator
+        const emailFeedback = document.getElementById('emailFeedback');
+        if (emailFeedback) {
+            emailFeedback.innerHTML = '<div class="text-muted"><small><i class="fas fa-spinner fa-spin"></i> Checking email availability...</small></div>';
+        }
+        
+        // Check email uniqueness via API
+        fetch('/api/validate/email?email=' + encodeURIComponent(email))
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showError(emailInput, 'This email is already registered');
+                    return false;
+                } else {
+                    showSuccess(emailInput);
+                    return true;
+                }
+            })
+            .catch(error => {
+                console.error('Error validating email:', error);
+                if (emailFeedback) {
+                    emailFeedback.innerHTML = '<div class="text-muted"><small>Could not verify email availability.</small></div>';
+                }
+                return false;
+            });
+        
+        return true;
+    }
+    
+    function validateMobile(mobile) {
+        if (!mobile) {
+            showError(mobileInput, 'Mobile number is required');
+            return false;
+        }
+        
+        const mobileRegex = /^\d{10}$/;
+        if (!mobileRegex.test(mobile)) {
+            showError(mobileInput, 'Please enter a valid 10-digit mobile number');
+            return false;
+        }
+        
+        const countryCode = document.getElementById('countryCode').value;
+        
+        // Check mobile uniqueness via API
+        fetch('/api/validate/mobile?mobile=' + encodeURIComponent(countryCode + mobile))
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showError(mobileInput, 'This mobile number is already registered');
+                    return false;
+                } else {
+                    showSuccess(mobileInput);
+                    return true;
+                }
+            })
+            .catch(error => {
+                console.error('Error validating mobile:', error);
+                return false;
+            });
+        
+        return true;
+    }
+    
+    function validateNTN(ntn) {
+        if (!ntn) {
+            showError(ntnInput, 'NTN is required');
+            return false;
+        }
+        
+        // Check NTN uniqueness via API
+        fetch('/api/validate/ntn?ntn=' + encodeURIComponent(ntn))
+            .then(response => response.json())
+            .then(data => {
+                if (data.exists) {
+                    showError(ntnInput, 'This NTN is already registered');
+                    return false;
+                } else {
+                    showSuccess(ntnInput);
+                    return true;
+                }
+            })
+            .catch(error => {
+                console.error('Error validating NTN:', error);
+                return false;
+            });
+        
+        return true;
+    }
+    
+    function checkPasswordStrength(password) {
+        const strengthBar = document.getElementById('passwordStrengthBar');
+        const strengthText = document.getElementById('passwordStrengthText');
+        
+        if (!password) {
+            strengthBar.style.width = '0%';
+            strengthBar.className = 'progress-bar';
+            strengthText.textContent = 'Password strength';
+            return false;
+        }
+        
+        let strength = 0;
+        
+        // Length check
+        if (password.length >= 8) {
+            strength += 25;
+        }
+        
+        // Uppercase check
+        if (/[A-Z]/.test(password)) {
+            strength += 25;
+        }
+        
+        // Digit check
+        if (/\d/.test(password)) {
+            strength += 25;
+        }
+        
+        // Special character check
+        if (/[^A-Za-z0-9]/.test(password)) {
+            strength += 25;
+        }
+        
+        strengthBar.style.width = strength + '%';
+        
+        if (strength < 50) {
+            strengthBar.className = 'progress-bar bg-danger';
+            strengthText.textContent = 'Weak password';
+            return false;
+        } else if (strength < 75) {
+            strengthBar.className = 'progress-bar bg-warning';
+            strengthText.textContent = 'Medium password';
+            return false;
+        } else {
+            strengthBar.className = 'progress-bar bg-success';
+            strengthText.textContent = 'Strong password';
+            return true;
+        }
+    }
+    
+    function validateConfirmPassword(password, confirmPassword) {
+        if (password !== confirmPassword) {
+            showError(confirmPasswordInput, 'Passwords do not match');
+            return false;
+        } else {
+            showSuccess(confirmPasswordInput);
+            return true;
+        }
+    }
+    
+    // Helper functions
+    function showError(input, message) {
+        input.classList.add('is-invalid');
+        input.classList.remove('is-valid');
+        const feedbackElement = input.nextElementSibling;
+        if (feedbackElement && feedbackElement.classList.contains('invalid-feedback')) {
+            feedbackElement.textContent = message;
+        }
+    }
+    
+    function showSuccess(input) {
+        input.classList.remove('is-invalid');
+        input.classList.add('is-valid');
+    }
+});
+</script>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Password visibility toggle and matching functionality
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const togglePassword = document.getElementById('togglePassword');
+        const toggleConfirmPassword = document.getElementById('toggleConfirmPassword');
+        const passwordMatchElement = document.getElementById('passwordMatch');
+        
+        if (passwordInput && confirmPasswordInput) {
+            if (togglePassword) {
+                togglePassword.addEventListener('click', function() {
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    this.querySelector('i').classList.toggle('fa-eye');
+                    this.querySelector('i').classList.toggle('fa-eye-slash');
+                });
+            }
+            
+            if (toggleConfirmPassword) {
+                toggleConfirmPassword.addEventListener('click', function() {
+                    const type = confirmPasswordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    confirmPasswordInput.setAttribute('type', type);
+                    this.querySelector('i').classList.toggle('fa-eye');
+                    this.querySelector('i').classList.toggle('fa-eye-slash');
+                });
+            }
+            
+            // Password matching feedback
+            confirmPasswordInput.addEventListener('input', function() {
+                if (passwordInput.value === '') {
+                    passwordMatchElement.innerHTML = '<small class="form-text text-muted">Please enter a password first</small>';
+                } else if (this.value === '') {
+                    passwordMatchElement.innerHTML = '<small class="form-text text-muted">Type to confirm password</small>';
+                } else if (this.value === passwordInput.value) {
+                    passwordMatchElement.innerHTML = '<small class="form-text text-success"><i class="fas fa-check-circle"></i> Passwords match</small>';
+                    confirmPasswordInput.classList.add('is-valid');
+                    confirmPasswordInput.classList.remove('is-invalid');
+                    // Show success toast for password match
+                    showToast('Passwords match successfully!', 'success');
+                } else {
+                    passwordMatchElement.innerHTML = '<small class="form-text text-danger"><i class="fas fa-times-circle"></i> Passwords do not match</small>';
+                    confirmPasswordInput.classList.add('is-invalid');
+                    confirmPasswordInput.classList.remove('is-valid');
+                    // Show error toast for password mismatch
+                    showToast('Passwords do not match!', 'error');
+                }
+            });
+            
+            // Update matching status when primary password changes
+            passwordInput.addEventListener('input', function() {
+                if (confirmPasswordInput.value !== '') {
+                    if (this.value === confirmPasswordInput.value) {
+                        passwordMatchElement.innerHTML = '<small class="form-text text-success"><i class="fas fa-check-circle"></i> Passwords match</small>';
+                        confirmPasswordInput.classList.add('is-valid');
+                        confirmPasswordInput.classList.remove('is-invalid');
+                        // Show success toast for password match
+                        showToast('Passwords match successfully!', 'success');
+                    } else {
+                        passwordMatchElement.innerHTML = '<small class="form-text text-danger"><i class="fas fa-times-circle"></i> Passwords do not match</small>';
+                        confirmPasswordInput.classList.add('is-invalid');
+                        confirmPasswordInput.classList.remove('is-valid');
+                        // Show error toast for password mismatch
+                        showToast('Passwords do not match!', 'error');
+                    }
+                }
+            });
+            }
+        
+        // Country, State, City dropdowns
+        document.getElementById('toggleConfirmPassword').addEventListener('click', function() {
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            const icon = this.querySelector('i');
+            
+            if (confirmPasswordInput.type === 'password') {
+                confirmPasswordInput.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                confirmPasswordInput.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+        
+        // Toast notification function
+        function showToast(message, type) {
+            // Create toast container if it doesn't exist
+            let toastContainer = document.getElementById('toastContainer');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toastContainer';
+                toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+                toastContainer.style.zIndex = '5';
+                document.body.appendChild(toastContainer);
+            }
+            
+            // Create toast element
+            const toastId = 'toast-' + Date.now();
+            const toastEl = document.createElement('div');
+            toastEl.className = `toast ${type === 'success' ? 'bg-success text-white' : 'bg-danger text-white'}`;
+            toastEl.id = toastId;
+            toastEl.setAttribute('role', 'alert');
+            toastEl.setAttribute('aria-live', 'assertive');
+            toastEl.setAttribute('aria-atomic', 'true');
+            
+            toastEl.innerHTML = `
+                <div class="toast-header">
+                    <strong class="me-auto">${type === 'success' ? 'Success' : 'Error'}</strong>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            `;
+            
+            toastContainer.appendChild(toastEl);
+            
+            // Initialize and show toast using try-catch to handle potential errors
+            try {
+                const toast = new bootstrap.Toast(toastEl, { delay: 3000 });
+                toast.show();
+            } catch (error) {
+                console.error('Error showing toast:', error);
+            }
+            
+            // Remove toast after it's hidden
+            toastEl.addEventListener('hidden.bs.toast', function() {
+                toastEl.remove();
+            });
+        }
+        
+        // Form submission
+        document.getElementById('registerForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Basic validation
+            const form = this;
+            let isValid = true;
+            
+            // Check required fields
+            const requiredFields = form.querySelectorAll('[required]');
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            // Check password match
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            if (password !== confirmPassword) {
+                document.getElementById('confirmPassword').classList.add('is-invalid');
+                document.getElementById('confirmPasswordFeedback').textContent = 'Passwords do not match';
+                isValid = false;
+            }
+            
+            if (isValid) {
+                // Submit form
+                form.submit();
+            } else {
+                // Show toast notification
+                showToast('Please correct the errors in the form', 'error');
+            }
+        });
+    }); // End of document ready function
+</script>
+{% endblock %}

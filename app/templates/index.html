@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}BazaarHub - Connect Buyers and Vendors{% endblock %}
+
+{% block content %}
+<section class="hero">
+    <div class="container hero-container">
+        <div class="hero-content">
+            <h1 class="hero-title">Welcome</h1>
+            <p class="hero-description">
+                Connect with trusted buyers and vendors across multiple industries. Grow your network, showcase your business, and discover the right partners to achieve your goals. Join thousands of businesses building stronger connections today!
+            </p>
+            
+            <div class="login-card">
+                <form id="login-form" method="post" action="/login">
+                    <div class="form-group">
+                        <label for="email" class="form-label">Email/Mobile</label>
+                        <input type="text" id="email" name="email" class="form-input" required>
+                        <div class="form-error" id="email-error">Please enter a valid email or mobile number</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="password" class="form-label">Password</label>
+                        <input type="password" id="password" name="password" class="form-input" required>
+                        <div class="form-error" id="password-error">Password must be at least 8 characters</div>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-block">Log In</button>
+                    <a href="/register" class="form-link">Do not have account? Create Account</a>
+                </form>
+            </div>
+        </div>
+        
+        <div class="hero-image">
+            <div class="curved-image">
+                <img src="/static/assets/workplace.jpeg" alt="Workplace">
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const emailError = document.getElementById('email-error');
+        const passwordError = document.getElementById('password-error');
+        
+        // Email/mobile validation
+        emailInput.addEventListener('blur', function() {
+            const value = this.value.trim();
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const mobileRegex = /^[0-9]{10,12}$/;
+            
+            if (!value || (!emailRegex.test(value) && !mobileRegex.test(value))) {
+                emailError.style.display = 'block';
+                this.classList.add('error');
+            } else {
+                emailError.style.display = 'none';
+                this.classList.remove('error');
+            }
+        });
+        
+        // Password validation
+        passwordInput.addEventListener('blur', function() {
+            if (!this.value || this.value.length < 8) {
+                passwordError.style.display = 'block';
+                this.classList.add('error');
+            } else {
+                passwordError.style.display = 'none';
+                this.classList.remove('error');
+            }
+        });
+        
+        // Form submission
+        loginForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Validate all fields
+            const emailValid = emailInput.value.trim() && 
+                ((/^[^\s@]+@[^\s@]+\.[^\s@]+$/).test(emailInput.value) || 
+                (/^[0-9]{10,12}$/).test(emailInput.value));
+            
+            const passwordValid = passwordInput.value && passwordInput.value.length >= 8;
+            
+            if (emailValid && passwordValid) {
+                // In a real app, this would submit to the server
+                // For now, we'll simulate a successful login
+                showToast('Login successful! Redirecting...', 'success');
+                
+                // Redirect to profile page after a short delay
+                setTimeout(() => {
+                    window.location.href = '/profile';
+                }, 1500);
+            } else {
+                showToast('Please correct the errors in the form', 'error');
+                
+                // Show specific errors
+                if (!emailValid) {
+                    emailError.style.display = 'block';
+                    emailInput.classList.add('error');
+                }
+                
+                if (!passwordValid) {
+                    passwordError.style.display = 'block';
+                    passwordInput.classList.add('error');
+                }
+            }
+        });
+        
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.innerHTML = `
+                <div class="toast-message">${message}</div>
+                <button class="toast-close">&times;</button>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                toast.remove();
+            }, 5000);
+            
+            // Close button
+            toast.querySelector('.toast-close').addEventListener('click', function() {
+                toast.remove();
+            });
+        }
+    });
+</script>
+{% endblock %}
