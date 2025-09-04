@@ -11,6 +11,7 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True)
+    mobile_code = Column(String, nullable=True)  # Added mobile country code
     mobile = Column(String, unique=True, nullable=True)
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
@@ -31,6 +32,16 @@ class Profile(Base):
     country = Column(String, nullable=True)
     state = Column(String, nullable=True)
     city = Column(String, nullable=True)
+    postal_code = Column(String, nullable=True)
+    website = Column(String, nullable=True)
+    business_category = Column(String, nullable=True)
+    business_type = Column(String, nullable=True)
+    name = Column(String, nullable=True)
+    establishment_year = Column(Integer, nullable=True)
+    landline_code = Column(String, nullable=True)
+    landline = Column(String, nullable=True)
+    gender = Column(String, nullable=True)
+    designation = Column(String, nullable=True)  # Added designation field
     
     # Relationships
     user = relationship("User", back_populates="profile")

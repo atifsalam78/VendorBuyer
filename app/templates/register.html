@@ -289,8 +289,10 @@
                     
                     <p class="text-muted mb-4 text-center">Join BazaarHub to connect with buyers and vendors across the marketplace. Fill in the details below to create your account.</p>
                     
-                    <form id="registerForm" action="/api/register" method="post">
+                    <form id="registerForm" action="/register" method="post">
                         <input type="hidden" id="accountType" name="accountType" value="vendor">
+                        <input type="hidden" id="is_vendor" name="is_vendor" value="true">
+                        <input type="hidden" id="company_name" name="company_name" value="">
                         
                         <div class="section-divider">
                             <hr>
@@ -311,7 +313,7 @@
                             <div class="col-md-4 mb-3">
                                 <label for="mobile" class="form-label">Mobile Number <span class="text-danger">*</span></label>
                                 <div class="input-group">
-                                    <select class="form-select" id="countryCode" name="countryCode" style="max-width: 120px;">
+                                    <select class="form-select" id="mobileCode" name="mobileCode" style="max-width: 120px;">
                                         <option value="+92">+92 (PK)</option>
                                         <option value="+1">+1 (US)</option>
                                         <option value="+44">+44 (UK)</option>
@@ -668,7 +670,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadCountries() {
-        fetch('/api/taxonomy/countries')
+        fetch('/taxonomy/countries')
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -705,7 +707,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadStates(countryId) {
-        fetch(`/api/taxonomy/states/${countryId}`)
+        fetch(`/taxonomy/states/${countryId}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -746,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function loadCities(stateId) {
-        fetch(`/api/taxonomy/cities/${stateId}`)
+        fetch(`/taxonomy/cities/${stateId}`)
             .then(response => {
                 if (!response.ok) {
                     throw new Error('Network response was not ok');
@@ -797,10 +799,10 @@ document.addEventListener('DOMContentLoaded', function() {
         };
         
         const countryCode = countryCodes[countryId] || '';
-        const countryCodeInput = document.getElementById('countryCode');
+        const mobileCodeInput = document.getElementById('mobileCode');
         const landlineCountryCodeInput = document.getElementById('landlineCountryCode');
         
-        if (countryCodeInput) countryCodeInput.value = countryCode;
+        if (mobileCodeInput) mobileCodeInput.value = countryCode;
         if (landlineCountryCodeInput) landlineCountryCodeInput.value = countryCode;
     }
     
@@ -905,6 +907,7 @@ document.addEventListener('DOMContentLoaded', function() {
         vendorFields.style.display = 'block';
         buyerFields.style.display = 'none';
         accountType.value = 'vendor';
+        document.getElementById('is_vendor').value = 'true';
         
         // Update required attributes for vendor fields
         document.querySelectorAll('#vendorFields input, #vendorFields select').forEach(el => {
@@ -922,6 +925,7 @@ document.addEventListener('DOMContentLoaded', function() {
         buyerFields.style.display = 'block';
         vendorFields.style.display = 'none';
         accountType.value = 'buyer';
+        document.getElementById('is_vendor').value = 'false';
         
         // Update required attributes for buyer fields
         document.querySelectorAll('#buyerFields input, #buyerFields select').forEach(el => {
@@ -1305,6 +1309,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('confirmPassword').classList.add('is-invalid');
                 document.getElementById('confirmPasswordFeedback').textContent = 'Passwords do not match';
                 isValid = false;
+            }
+            
+            // Set company_name based on account type and convert is_vendor to boolean
+            const isVendor = document.getElementById('is_vendor').value === 'true';
+            document.getElementById('is_vendor').value = isVendor;
+            
+            if (isVendor) {
+                document.getElementById('company_name').value = document.getElementById('businessName').value;
+            } else {
+                document.getElementById('company_name').value = document.getElementById('buyerCompanyName').value;
             }
             
             if (isValid) {
