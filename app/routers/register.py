@@ -61,7 +61,8 @@ async def register_user(
         mobile_code=mobileCode,
         mobile=mobile,
         hashed_password=hashed_password,
-        is_vendor=is_vendor
+        is_vendor=is_vendor,
+        gender=vendorGender if is_vendor else buyerGender
     )
     
     db.add(new_user)
@@ -124,7 +125,10 @@ async def register_user(
             establishment_year=int(establishmentYear) if establishmentYear and establishmentYear.isdigit() else None,
             landline_code=landlineCode,
             landline=landline,
-            gender=vendorGender  # Use vendor's gender
+            connections_count=0,
+            followers_count=0,
+            following_count=0,
+            tagline="Innovative Technology for Modern Businesses"  # Default tagline
         )
     else:
         # For buyer accounts
@@ -144,8 +148,11 @@ async def register_user(
             establishment_year=int(establishmentYear) if establishmentYear and establishmentYear.isdigit() else None,
             landline_code=landlineCode,
             landline=landline,
-            gender=buyerGender,  # Use buyer's gender
-            designation=buyerDesignation  # Save buyer's designation
+            designation=buyerDesignation,  # Save buyer's designation
+            connections_count=0,
+            followers_count=0,
+            following_count=0,
+            tagline="Professional Buyer"  # Default tagline for buyers
         )
     
     db.add(new_profile)

@@ -12,6 +12,11 @@
             </p>
             
             <div class="login-card">
+                {% if error %}
+                <div class="alert alert-danger" role="alert">
+                    {{ error }}
+                </div>
+                {% endif %}
                 <form id="login-form" method="post" action="/login">
                     <div class="form-group">
                         <label for="email" class="form-label">Email/Mobile</label>
@@ -77,7 +82,7 @@
         
         // Form submission
         loginForm.addEventListener('submit', function(e) {
-            e.preventDefault();
+            // Don't prevent default - let the form submit normally to the server
             
             // Validate all fields
             const emailValid = emailInput.value.trim() && 
@@ -86,16 +91,8 @@
             
             const passwordValid = passwordInput.value && passwordInput.value.length >= 8;
             
-            if (emailValid && passwordValid) {
-                // In a real app, this would submit to the server
-                // For now, we'll simulate a successful login
-                showToast('Login successful! Redirecting...', 'success');
-                
-                // Redirect to profile page after a short delay
-                setTimeout(() => {
-                    window.location.href = '/profile';
-                }, 1500);
-            } else {
+            if (!emailValid || !passwordValid) {
+                e.preventDefault(); // Only prevent submission if validation fails
                 showToast('Please correct the errors in the form', 'error');
                 
                 // Show specific errors

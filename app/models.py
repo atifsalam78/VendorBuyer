@@ -16,6 +16,7 @@ class User(Base):
     hashed_password = Column(String)
     is_active = Column(Boolean, default=True)
     is_vendor = Column(Boolean, default=False)
+    gender = Column(String, nullable=True)  # Moved from Profile to User
     created_at = Column(DateTime, default=func.now())
     
     # Relationships
@@ -40,8 +41,17 @@ class Profile(Base):
     establishment_year = Column(Integer, nullable=True)
     landline_code = Column(String, nullable=True)
     landline = Column(String, nullable=True)
-    gender = Column(String, nullable=True)
     designation = Column(String, nullable=True)  # Added designation field
+    connections_count = Column(Integer, default=0)  # Number of connections
+    followers_count = Column(Integer, default=0)  # Number of followers
+    following_count = Column(Integer, default=0)  # Number of accounts following
+    tagline = Column(String, nullable=True)  # Company tagline/description
+    
+    # Social links
+    linkedin = Column(String, nullable=True)
+    twitter = Column(String, nullable=True)
+    facebook = Column(String, nullable=True)
+    instagram = Column(String, nullable=True)
     
     # Relationships
     user = relationship("User", back_populates="profile")
