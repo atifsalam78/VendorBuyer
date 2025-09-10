@@ -167,63 +167,232 @@ block content %}
             display: none;
             margin-top: 10px;
             background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
             z-index: 100;
-            position: relative;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 400px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            animation: fadeIn 0.3s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translate(-50%, -60%); }
+            to { opacity: 1; transform: translate(-50%, -50%); }
         }
         
         .edit-input {
             width: 100%;
-            padding: 8px 12px;
-            border-radius: 4px;
-            border: 1px solid #ddd;
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+        
+        .edit-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 2px 10px rgba(74, 108, 247, 0.15);
+            outline: none;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            width: 100%;
+            height: 80px;
+            margin-bottom: 15px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            background: #f9f9f9;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        
+        .file-input-wrapper:hover {
+            border-color: var(--accent);
+            background: #f0f5ff;
+        }
+        
+        .file-input-wrapper.highlight {
+            border-color: var(--accent);
+            background: #e6edff;
+            transform: scale(1.02);
+            box-shadow: 0 5px 15px rgba(74, 108, 247, 0.2);
+        }
+        
+        .file-input-wrapper.has-file {
+            border-style: solid;
+            border-color: var(--accent);
+            background: #f0f5ff;
+        }
+        
+        .file-input-wrapper i {
+            font-size: 24px;
+            color: #aaa;
             margin-bottom: 10px;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-wrapper:hover i {
+            color: var(--accent);
+            transform: scale(1.1);
+        }
+        
+        .file-input-wrapper span {
+            font-size: 14px;
+            color: #777;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-wrapper:hover span {
+            color: var(--accent);
+        }
+        
+        .file-input-wrapper input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
         }
         
         .edit-buttons {
             display: flex;
-            gap: 10px;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 15px;
+            padding: 5px;
+            background: #f9f9f9;
+            border-radius: 8px;
         }
         
         .btn-save {
-            background: var(--accent);
+            background: linear-gradient(145deg, #4A6CF7, #3f5bd3);
             color: white;
-            padding: 6px 12px;
-            border-radius: 4px;
+            padding: 8px 16px;
+            border-radius: 8px;
             border: none;
             cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(74, 108, 247, 0.3);
+            flex: 0;
+            min-width: 80px;
+            max-width: 100px;
+            font-size: 14px;
+            text-align: center;
+            display: inline-block;
+        }
+        
+        .btn-save:hover {
+            background: linear-gradient(145deg, #3f5bd3, #4A6CF7);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(74, 108, 247, 0.4);
         }
         
         .btn-cancel {
-            background: #f1f1f1;
-            color: #333;
-            padding: 6px 12px;
-            border-radius: 4px;
-            border: none;
+            background: #f5f5f5;
+            color: #555;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
             cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            flex: 0;
+            min-width: 80px;
+            max-width: 100px;
+            font-size: 14px;
+            text-align: center;
+            display: inline-block;
+        }
+        
+        .btn-cancel:hover {
+            background: #e5e5e5;
+            transform: translateY(-2px);
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin-left: 8px;
+        }
+        
+        .spinner > div {
+            width: 8px;
+            height: 8px;
+            background-color: white;
+            border-radius: 100%;
+            display: inline-block;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+        
+        .spinner .bounce1 {
+            animation-delay: -0.32s;
+        }
+        
+        .spinner .bounce2 {
+            animation-delay: -0.16s;
+        }
+        
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
         }
         
         /* Image upload button styles */
         .banner-upload-btn {
             position: absolute;
-            bottom: 10px;
-            right: 10px;
-            background: rgba(0, 0, 0, 0.6);
+            bottom: 15px;
+            right: 15px;
+            background: linear-gradient(145deg, rgba(74, 108, 247, 0.8), rgba(63, 91, 211, 0.8));
             color: white;
-            padding: 8px 12px;
-            border-radius: 4px;
+            padding: 10px 16px;
+            border-radius: 50px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             font-size: 14px;
-            transition: background 0.3s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            z-index: 10;
         }
         
         .banner-upload-btn:hover {
-            background: rgba(0, 0, 0, 0.8);
+            background: linear-gradient(145deg, rgba(63, 91, 211, 0.9), rgba(74, 108, 247, 0.9));
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.25);
+        }
+        
+        .banner-upload-btn i {
+            font-size: 16px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
         
         .profile-upload-btn {
@@ -254,7 +423,7 @@ block content %}
         
         .cover-banner {
             position: relative;
-            height: 200px;
+            height: 250px;
             background-color: #f0f2f5;
             overflow: hidden;
         }
@@ -903,15 +1072,149 @@ block content %}
             const bannerUploadBtn = document.querySelector('.banner-upload-btn');
             const bannerForm = document.getElementById('banner-form');
             const cancelBannerBtn = document.getElementById('cancel-banner-btn');
+            const bannerFileInput = document.getElementById('banner-file-input');
+            const selectedFileName = document.getElementById('selected-file-name');
+            const fileInputWrapper = document.querySelector('.file-input-wrapper');
             
-            if (bannerUploadBtn && bannerForm && cancelBannerBtn) {
+            if (bannerUploadBtn && bannerForm && cancelBannerBtn && bannerFileInput) {
+                // Show form with animation
                 bannerUploadBtn.addEventListener('click', function() {
                     bannerForm.style.display = 'block';
+                    setTimeout(() => {
+                        bannerForm.style.opacity = '1';
+                    }, 10);
                 });
                 
-                cancelBannerBtn.addEventListener('click', function() {
-                    bannerForm.style.display = 'none';
+                // Make the file input wrapper clickable to trigger file selection
+                fileInputWrapper.addEventListener('click', function(e) {
+                    // Prevent the click from propagating to the input itself
+                    // which would trigger two file dialogs
+                    if (e.target !== bannerFileInput) {
+                        e.preventDefault();
+                        bannerFileInput.click();
+                    }
                 });
+                
+                // Hide form with animation
+                cancelBannerBtn.addEventListener('click', function() {
+                    bannerForm.style.opacity = '0';
+                    setTimeout(() => {
+                        bannerForm.style.display = 'none';
+                        // Reset the form
+                        if (bannerFileInput) {
+                            bannerFileInput.value = '';
+                            if (selectedFileName) selectedFileName.textContent = '';
+                            if (fileInputWrapper) {
+                                fileInputWrapper.classList.remove('has-file');
+                                const previewImg = fileInputWrapper.querySelector('.file-preview');
+                                if (previewImg) previewImg.remove();
+                            }
+                        }
+                    }, 300);
+                });
+            }
+            
+            // File input handling
+            if (bannerFileInput && selectedFileName && fileInputWrapper) {
+                // File selection change
+                bannerFileInput.addEventListener('change', function() {
+                    if (this.files && this.files[0]) {
+                        const file = this.files[0];
+                        selectedFileName.textContent = file.name;
+                        fileInputWrapper.classList.add('has-file');
+                        
+                        // Remove existing preview if any
+                        const existingPreview = fileInputWrapper.querySelector('.file-preview');
+                        if (existingPreview) existingPreview.remove();
+                        
+                        // Create image preview
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            const img = document.createElement('img');
+                            img.src = e.target.result;
+                            img.className = 'file-preview';
+                            img.style.cssText = 'position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 8px; z-index: -1; opacity: 0.2;';
+                            fileInputWrapper.appendChild(img);
+                        }
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Form submission handling
+                const bannerForm = document.querySelector('#banner-form form');
+                const uploadButton = document.getElementById('banner-upload-submit');
+                
+                if (bannerForm && uploadButton) {
+                    bannerForm.addEventListener('submit', function(e) {
+                        // Check if a file is selected
+                        if (!bannerFileInput.files || !bannerFileInput.files[0]) {
+                            e.preventDefault();
+                            alert('Please select an image file first.');
+                            return false;
+                        }
+                        
+                        // Show loading spinner
+                        const buttonText = uploadButton.querySelector('span');
+                        const spinner = uploadButton.querySelector('.spinner');
+                        
+                        if (buttonText && spinner) {
+                            buttonText.style.display = 'none';
+                            spinner.style.display = 'inline-flex';
+                        }
+                        
+                        // Disable the button to prevent multiple submissions
+                        uploadButton.disabled = true;
+                        
+                        // Continue with form submission
+                        return true;
+                    });
+                }
+                
+                // Drag and drop functionality
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    fileInputWrapper.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    fileInputWrapper.addEventListener(eventName, highlight, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    fileInputWrapper.addEventListener(eventName, unhighlight, false);
+                });
+                
+                function highlight() {
+                    fileInputWrapper.classList.add('highlight');
+                }
+                
+                function unhighlight() {
+                    fileInputWrapper.classList.remove('highlight');
+                }
+                
+                fileInputWrapper.addEventListener('drop', handleDrop, false);
+                
+                function handleDrop(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    bannerFileInput.files = files;
+                    
+                    // Trigger change event
+                    const event = new Event('change');
+                    bannerFileInput.dispatchEvent(event);
+                    
+                    // Show the form if it's not already visible
+                    if (bannerForm.style.display === 'none') {
+                        bannerForm.style.display = 'block';
+                        setTimeout(() => {
+                            bannerForm.style.opacity = '1';
+                        }, 10);
+                    }
+                }
             }
             
             // Profile image upload
@@ -1025,12 +1328,25 @@ block content %}
                     <span>Update Banner</span>
                 </div>
                 <div class="edit-form" id="banner-form" style="display: none;">
+                    <h3 style="text-align: center; margin-bottom: 20px; color: #333;">Update Banner Image</h3>
                     <form action="/upload-images" method="post" enctype="multipart/form-data">
                         <input type="hidden" name="email" value="{{ user['email'] }}">
                         <input type="hidden" name="image_type" value="banner">
-                        <input type="file" name="file" accept="image/*" required>
+                        <div class="file-input-wrapper">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <span>Drag & drop your image here or click to browse</span>
+                            <span id="selected-file-name" style="margin-top: 5px; font-size: 12px; color: var(--accent);"></span>
+                            <input type="file" name="file" id="banner-file-input" accept="image/*" required>
+                        </div>
                         <div class="edit-buttons">
-                            <button type="submit" class="btn-save">Upload</button>
+                            <button type="submit" class="btn-save" id="banner-upload-submit">
+                                <span>Upload</span>
+                                <div class="spinner" style="display: none;">
+                                    <div class="bounce1"></div>
+                                    <div class="bounce2"></div>
+                                    <div class="bounce3"></div>
+                                </div>
+                            </button>
                             <button type="button" class="btn-cancel" id="cancel-banner-btn">Cancel</button>
                         </div>
                     </form>
