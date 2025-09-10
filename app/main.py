@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Request, Depends, Form
+from fastapi import FastAPI, Request, Depends, Form, UploadFile, File
+from fastapi.responses import HTMLResponse, RedirectResponse
+import shutil
+import os
+from uuid import uuid4
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
 from pathlib import Path
 import uvicorn
 from sqlalchemy.future import select
@@ -25,6 +28,13 @@ templates = Jinja2Templates(directory="app/templates")
 app.include_router(register.router, tags=["register"])
 app.include_router(validate.router, tags=["validate"])
 app.include_router(taxonomy.router, prefix="/taxonomy", tags=["taxonomy"])
+
+# Create uploads directory if it doesn't exist
+@app.on_event("startup")
+async def create_upload_directory():
+    upload_dir = Path("app/static/uploads")
+    if not upload_dir.exists():
+        upload_dir.mkdir(parents=True)
 
 # Initialize database on startup
 @app.on_event("startup")
@@ -133,6 +143,48 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db)):
     }
     
     return templates.TemplateResponse("profile.html", {"request": request, "user": user_data})
+
+@app.post("/upload-images", response_class=HTMLResponse)
+async def upload_images(
+    request: Request,
+    email: str = Form(...),
+    image_type: str = Form(...),
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db)
+):
+    # Verify user exists
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    
+    # Generate a unique filename
+    file_extension = file.filename.split(".")[-1]
+    unique_filename = f"{uuid4()}.{file_extension}"
+    file_path = f"app/static/uploads/{unique_filename}"
+    
+    # Save the uploaded file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    
+    # Get or create profile image record
+    result = await db.execute(select(ProfileImage).where(ProfileImage.user_id == user.id))
+    profile_image = result.scalars().first()
+    
+    if not profile_image:
+        profile_image = ProfileImage(user_id=user.id)
+        db.add(profile_image)
+    
+    # Update the appropriate field based on image_type
+    if image_type == "banner":
+        profile_image.banner_pic = f"/static/uploads/{unique_filename}"
+    elif image_type == "profile":
+        profile_image.profile_pic = f"/static/uploads/{unique_filename}"
+    
+    await db.commit()
+    
+    return RedirectResponse(url=f"/profile?email={email}", status_code=303)
 
 @app.post("/update-profile", response_class=HTMLResponse)
 async def update_profile(request: Request, email: str = Form(...), tagline: str = Form(None), 

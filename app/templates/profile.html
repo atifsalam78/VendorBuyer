@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block title %}Register - BazaarHub{% endblock %} {%
+{% extends "base.html" %} {% block title %}Profile - BazaarHub{% endblock %} {%
 block content %}
     <style>
         :root {
@@ -166,6 +166,12 @@ block content %}
         .edit-form {
             display: none;
             margin-top: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            z-index: 100;
+            position: relative;
         }
         
         .edit-input {
@@ -197,6 +203,211 @@ block content %}
             border-radius: 4px;
             border: none;
             cursor: pointer;
+        }
+        
+        /* Image upload button styles */
+        .banner-upload-btn {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        
+        .banner-upload-btn:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        
+        .profile-upload-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: linear-gradient(145deg, #4A6CF7, #3f5bd3);
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 4px 10px rgba(74, 108, 247, 0.3);
+            border: 2px solid white;
+        }
+        
+        .profile-upload-btn:hover {
+            background: linear-gradient(145deg, #3f5bd3, #4A6CF7);
+            transform: translateY(-2px) scale(1.05);
+            box-shadow: 0 6px 15px rgba(74, 108, 247, 0.4);
+        }
+        
+        .cover-banner {
+            position: relative;
+            height: 200px;
+            background-color: #f0f2f5;
+            overflow: hidden;
+        }
+        
+        .cover-banner img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .company-logo {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background-color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: visible;
+            border: 5px solid white;
+            box-shadow: 0 10px 25px rgba(74, 108, 247, 0.2);
+            margin-bottom: 20px;
+            z-index: 5;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .company-logo:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(74, 108, 247, 0.25);
+        }
+        
+        .profile-pic-container {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: linear-gradient(145deg, #f8f9fa, #e9ecef);
+        }
+        
+        .image-adjustment-controls {
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            width: 250px;
+            margin-top: 15px;
+            z-index: 100;
+            display: none;
+        }
+        
+        .image-adjustment-controls::before {
+            content: '';
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid white;
+        }
+        
+        .adjustment-control {
+            margin-bottom: 10px;
+        }
+        
+        .adjustment-control label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+        }
+        
+        .adjustment-control input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #f0f0f0;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        .adjustment-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #4A6CF7;
+            cursor: pointer;
+        }
+        
+        .btn-reset {
+            background: #f0f0f0;
+            color: #555;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: block;
+            margin: 10px auto 0;
+        }
+        
+        .btn-reset:hover {
+            background: #e0e0e0;
+        }
+        
+        .profile-image-wrapper {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+            border-radius: 50%;
+        }
+        
+        .profile-image-wrapper::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, rgba(74, 108, 247, 0.2), transparent);
+            z-index: 2;
+            pointer-events: none;
+        }
+        
+        .company-logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 50%;
+            background-color: #f8f8f9;
+            transition: transform 0.5s ease;
+            filter: brightness(1.05);
+            object-position: center;
+        }
+        
+        .company-logo:hover img {
+            transform: scale(1.05);
         }
         
         .form-group {
@@ -685,34 +896,197 @@ block content %}
             </div>
         </div>
     </header> -->
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Banner image upload
+            const bannerUploadBtn = document.querySelector('.banner-upload-btn');
+            const bannerForm = document.getElementById('banner-form');
+            const cancelBannerBtn = document.getElementById('cancel-banner-btn');
+            
+            if (bannerUploadBtn && bannerForm && cancelBannerBtn) {
+                bannerUploadBtn.addEventListener('click', function() {
+                    bannerForm.style.display = 'block';
+                });
+                
+                cancelBannerBtn.addEventListener('click', function() {
+                    bannerForm.style.display = 'none';
+                });
+            }
+            
+            // Profile image upload
+            const profileUploadBtn = document.querySelector('.profile-upload-btn');
+            const profileForm = document.getElementById('profile-form');
+            const cancelProfileBtn = document.getElementById('cancel-profile-btn');
+            
+            if (profileUploadBtn && profileForm && cancelProfileBtn) {
+                profileUploadBtn.addEventListener('click', function() {
+                    profileForm.style.display = 'block';
+                });
+                
+                cancelProfileBtn.addEventListener('click', function() {
+                    profileForm.style.display = 'none';
+                });
+            }
+            
+            // Image adjustment functionality
+            const profileImage = document.getElementById('profile-image');
+            const adjustmentControls = document.querySelector('.image-adjustment-controls');
+            const zoomControl = document.getElementById('zoom-control');
+            const positionXControl = document.getElementById('position-x-control');
+            const positionYControl = document.getElementById('position-y-control');
+            const resetButton = document.getElementById('reset-adjustment');
+            
+            if (profileImage && adjustmentControls && zoomControl && positionXControl && positionYControl && resetButton) {
+                // Initialize with better fitting for the current image
+                profileImage.style.objectFit = 'contain';
+                profileImage.style.objectPosition = 'center';
+                
+                // Add a double-click event to the profile image to show adjustment controls
+                profileImage.addEventListener('dblclick', function(e) {
+                    e.stopPropagation(); // Prevent event bubbling
+                    adjustmentControls.style.display = adjustmentControls.style.display === 'block' ? 'none' : 'block';
+                });
+                
+                // Close adjustment controls when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (adjustmentControls.style.display === 'block' && 
+                        !adjustmentControls.contains(e.target) && 
+                        e.target !== profileImage) {
+                        adjustmentControls.style.display = 'none';
+                    }
+                });
+                
+                // Apply zoom and position adjustments
+                function applyAdjustments() {
+                    const zoom = zoomControl.value;
+                    const posX = positionXControl.value;
+                    const posY = positionYControl.value;
+                    
+                    // Apply transform for zoom and position
+                    profileImage.style.transform = `scale(${zoom}) translate(${posX}px, ${posY}px)`;
+                    
+                    // Adjust object-fit based on zoom level
+                    if (zoom > 1.2) {
+                        profileImage.style.objectFit = 'cover';
+                    } else {
+                        profileImage.style.objectFit = 'contain';
+                    }
+                }
+                
+                // Add event listeners to controls
+                zoomControl.addEventListener('input', applyAdjustments);
+                positionXControl.addEventListener('input', applyAdjustments);
+                positionYControl.addEventListener('input', applyAdjustments);
+                
+                // Reset adjustments
+                resetButton.addEventListener('click', function() {
+                    zoomControl.value = 1;
+                    positionXControl.value = 0;
+                    positionYControl.value = 0;
+                    profileImage.style.transform = 'scale(1) translate(0px, 0px)';
+                    profileImage.style.objectFit = 'contain';
+                    profileImage.style.objectPosition = 'center';
+                });
+            }
+            
+            // Tagline edit functionality
+            const editTaglineBtn = document.getElementById('edit-tagline-btn');
+            const taglineForm = document.getElementById('tagline-form');
+            const cancelTaglineBtn = document.getElementById('cancel-tagline-btn');
+            const taglineText = document.getElementById('tagline-text');
+            
+            if (editTaglineBtn && taglineForm && cancelTaglineBtn && taglineText) {
+                editTaglineBtn.addEventListener('click', function() {
+                    taglineForm.style.display = 'block';
+                    taglineText.style.display = 'none';
+                    editTaglineBtn.style.display = 'none';
+                });
+                
+                cancelTaglineBtn.addEventListener('click', function() {
+                    taglineForm.style.display = 'none';
+                    taglineText.style.display = 'inline';
+                    editTaglineBtn.style.display = 'inline';
+                });
+            }
+        });
+    </script>
 
     <!-- Main Content -->
     <div class="container">
         <!-- Profile Header -->
         <div class="profile-header">
             <div class="cover-banner">
-                {% if user.profile_image and user.profile_image.banner_pic %}
-                    <img src="{{ user.profile_image.banner_pic }}" alt="Company Banner">
+                {% if user['profile_image'] and user['profile_image']['banner_pic'] %}
+                    <img src="{{ user['profile_image']['banner_pic'] }}" alt="Company Banner">
                 {% endif %}
+                <div class="banner-upload-btn">
+                    <i class="fas fa-camera"></i>
+                    <span>Update Banner</span>
+                </div>
+                <div class="edit-form" id="banner-form" style="display: none;">
+                    <form action="/upload-images" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="email" value="{{ user['email'] }}">
+                        <input type="hidden" name="image_type" value="banner">
+                        <input type="file" name="file" accept="image/*" required>
+                        <div class="edit-buttons">
+                            <button type="submit" class="btn-save">Upload</button>
+                            <button type="button" class="btn-cancel" id="cancel-banner-btn">Cancel</button>
+                        </div>
+                    </form>
+                </div>
             </div>
             <div class="profile-info">
                 <div class="company-logo">
-                    {% if user.profile_image and user.profile_image.profile_pic %}
-                        <img src="{{ user.profile_image.profile_pic }}" alt="Company Logo">
-                    {% else %}
-                        <i class="fas fa-building" style="font-size: 60px; color: #4A6CF7;"></i>
-                    {% endif %}
+                    <div class="profile-pic-container">
+                        {% if user['profile_image'] and user['profile_image']['profile_pic'] %}
+                            <div class="profile-image-wrapper">
+                                <img id="profile-image" src="{{ user['profile_image']['profile_pic'] }}" alt="Profile Picture">
+                            </div>
+                            <div class="image-adjustment-controls">
+                                <div class="adjustment-control">
+                                    <label for="zoom-control">Zoom</label>
+                                    <input type="range" id="zoom-control" min="1" max="2" step="0.1" value="1">
+                                </div>
+                                <div class="adjustment-control">
+                                    <label for="position-x-control">Position X</label>
+                                    <input type="range" id="position-x-control" min="-50" max="50" step="1" value="0">
+                                </div>
+                                <div class="adjustment-control">
+                                    <label for="position-y-control">Position Y</label>
+                                    <input type="range" id="position-y-control" min="-50" max="50" step="1" value="0">
+                                </div>
+                                <button id="reset-adjustment" class="btn-reset">Reset</button>
+                            </div>
+                        {% else %}
+                            <i class="fas fa-building" style="font-size: 60px; color: #4A6CF7;"></i>
+                        {% endif %}
+                    </div>
+                    <div class="profile-upload-btn">
+                        <i class="fas fa-camera"></i>
+                    </div>
+                    <div class="edit-form" id="profile-form" style="display: none;">
+                        <form action="/upload-images" method="post" enctype="multipart/form-data">
+                            <input type="hidden" name="email" value="{{ user['email'] }}">
+                            <input type="hidden" name="image_type" value="profile">
+                            <input type="file" name="file" accept="image/*" required>
+                            <div class="edit-buttons">
+                                <button type="submit" class="btn-save">Upload</button>
+                                <button type="button" class="btn-cancel" id="cancel-profile-btn">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
                 <div class="company-details">
-                    <h1 class="company-name">{{ user.profile.company_name }}</h1>
+                    <h1 class="company-name">{{ user['profile']['company_name'] }}</h1>
                     <p class="company-tagline">
-                        <span id="tagline-text">{{ user.profile.tagline }}</span>
+                        <span id="tagline-text">{{ user['profile']['tagline'] }}</span>
                         <i class="fas fa-edit edit-icon" id="edit-tagline-btn"></i>
                         
                         <div class="edit-form" id="tagline-form">
                             <form action="/update-profile" method="post">
-                                <input type="hidden" name="email" value="{{ user.email }}">
-                                <input type="text" class="edit-input" name="tagline" value="{{ user.profile.tagline }}" placeholder="Enter your tagline">
+                                <input type="hidden" name="email" value="{{ user['email'] }}">
+                                 <input type="text" class="edit-input" name="tagline" value="{{ user['profile']['tagline'] }}" placeholder="Enter your tagline">
                                 <div class="edit-buttons">
                                     <button type="submit" class="btn-save">Save</button>
                                     <button type="button" class="btn-cancel" id="cancel-tagline-btn">Cancel</button>
@@ -723,16 +1097,16 @@ block content %}
                     <div class="stats-actions">
                         <div class="stats">
                             <div class="stat-item">
-                                <div class="stat-value">{{ user.profile.connections_count }}</div>
-                                <div class="stat-label">Connections</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value">{{ user.profile.followers_count }}</div>
-                                <div class="stat-label">Followers</div>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value">{{ user.profile.following_count }}</div>
-                                <div class="stat-label">Following</div>
+                                <div class="stat-value">{{ user['profile']['connections_count'] }}</div>
+                                 <div class="stat-label">Connections</div>
+                             </div>
+                             <div class="stat-item">
+                                 <div class="stat-value">{{ user['profile']['followers_count'] }}</div>
+                                 <div class="stat-label">Followers</div>
+                             </div>
+                             <div class="stat-item">
+                                 <div class="stat-value">{{ user['profile']['following_count'] }}</div>
+                                 <div class="stat-label">Following</div>
                             </div>
                         </div>
                         <div class="action-buttons">
@@ -759,7 +1133,7 @@ block content %}
                             </div>
                             <div class="info-content">
                                 <h4>Email</h4>
-                                <p>{{ user.email }}</p>
+                                <p>{{ user['email'] }}</p>
                             </div>
                         </div>
                         <div class="info-item">
@@ -802,7 +1176,7 @@ block content %}
                             </div>
                             <div class="info-content">
                                 <h4>Company Name</h4>
-                                <p>{{ user.profile.company_name }}</p>
+                                <p>{{ user['profile']['company_name'] }}</p>
                             </div>
                         </div>
                         <div class="info-item">
@@ -811,7 +1185,7 @@ block content %}
                             </div>
                             <div class="info-content">
                                 <h4>Location</h4>
-                                <p>{{ user.profile.city }}, {{ user.profile.state }}, {{ user.profile.country }}</p>
+                                <p>{{ user['profile']['city'] }}, {{ user['profile']['state'] }}, {{ user['profile']['country'] }}</p>
                             </div>
                         </div>
                         {% if user.is_vendor %}
@@ -821,7 +1195,7 @@ block content %}
                             </div>
                             <div class="info-content">
                                 <h4>Business Category</h4>
-                                <p>{{ user.profile.business_category }}</p>
+                                <p>{{ user['profile']['business_category'] }}</p>
                             </div>
                         </div>
                         <div class="info-item">
