@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import routers
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db
-from app.models import User, Profile
+from app.models import User, Profile, ProfileImage
 from app.auth import verify_password
 
 app = FastAPI(title="BazaarHub")
@@ -90,6 +90,10 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db)):
         # Redirect to login page if profile not found
         return RedirectResponse(url="/", status_code=303)
     
+    # Query the profile image for the user
+    profile_image_result = await db.execute(select(ProfileImage).where(ProfileImage.user_id == user.id))
+    profile_image = profile_image_result.scalars().first()
+    
     # Create user data dictionary with actual user data
     user_data = {
         "id": user.id,
@@ -121,6 +125,10 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db)):
             "twitter": profile.twitter,
             "facebook": profile.facebook,
             "instagram": profile.instagram
+        },
+        "profile_image": {
+            "profile_pic": profile_image.profile_pic if profile_image else None,
+            "banner_pic": profile_image.banner_pic if profile_image else None
         }
     }
     

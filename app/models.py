@@ -6,6 +6,18 @@ import datetime
 
 Base = declarative_base()
 
+class ProfileImage(Base):
+    __tablename__ = "profile_images"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    profile_pic = Column(String, nullable=True)
+    banner_pic = Column(String, nullable=True)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationship
+    user = relationship("User", back_populates="profile_image")
+
 class User(Base):
     __tablename__ = "users"
     
@@ -21,6 +33,7 @@ class User(Base):
     
     # Relationships
     profile = relationship("Profile", back_populates="user", uselist=False)
+    profile_image = relationship("ProfileImage", back_populates="user", uselist=False)
 
 class Profile(Base):
     __tablename__ = "profiles"

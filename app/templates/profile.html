@@ -691,11 +691,17 @@ block content %}
         <!-- Profile Header -->
         <div class="profile-header">
             <div class="cover-banner">
-                <!-- Banner image would go here -->
+                {% if user.profile_image and user.profile_image.banner_pic %}
+                    <img src="{{ user.profile_image.banner_pic }}" alt="Company Banner">
+                {% endif %}
             </div>
             <div class="profile-info">
                 <div class="company-logo">
-                    <i class="fas fa-building" style="font-size: 60px; color: #4A6CF7;"></i>
+                    {% if user.profile_image and user.profile_image.profile_pic %}
+                        <img src="{{ user.profile_image.profile_pic }}" alt="Company Logo">
+                    {% else %}
+                        <i class="fas fa-building" style="font-size: 60px; color: #4A6CF7;"></i>
+                    {% endif %}
                 </div>
                 <div class="company-details">
                     <h1 class="company-name">{{ user.profile.company_name }}</h1>
