@@ -257,7 +257,70 @@ async def migrate():
                 if not index_visibility_exists:
                     await conn.execute(text("CREATE INDEX ix_posts_visibility ON posts(visibility)"))
                     print("ix_posts_visibility index created.")
+            
+            # PART 4: Create likes table
+            print("\nMigration 4: Adding likes table...")
+            
+            # Check if likes table exists
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='likes'"))
+            likes_table_exists = result.fetchone() is not None
+            
+            if not likes_table_exists:
+                print("Creating likes table...")
+                await conn.execute(text("""
+                CREATE TABLE likes (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    post_id INTEGER NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE
+                )
+                """))
+                print("likes table created successfully.")
                 
+                # Create unique index to prevent duplicate likes
+                await conn.execute(text("CREATE UNIQUE INDEX ix_likes_user_post ON likes(user_id, post_id)"))
+                print("Unique index created for likes table.")
+                
+                # Create individual indexes for high traffic optimization
+                await conn.execute(text("CREATE INDEX ix_likes_user_id ON likes(user_id)"))
+                await conn.execute(text("CREATE INDEX ix_likes_post_id ON likes(post_id)"))
+                await conn.execute(text("CREATE INDEX ix_likes_created_at ON likes(created_at)"))
+                print("Performance indexes created for likes table.")
+            else:
+                print("likes table already exists.")
+                
+                # Check if unique constraint exists
+                result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_likes_user_post'"))
+                unique_index_exists = result.fetchone() is not None
+                
+                if not unique_index_exists:
+                    await conn.execute(text("CREATE UNIQUE INDEX ix_likes_user_post ON likes(user_id, post_id)"))
+                    print("Unique index created for likes table.")
+                
+                # Check if performance indexes exist
+                result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_likes_user_id'"))
+                user_index_exists = result.fetchone() is not None
+                
+                result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_likes_post_id'"))
+                post_index_exists = result.fetchone() is not None
+                
+                result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_likes_created_at'"))
+                created_index_exists = result.fetchone() is not None
+                
+                if not user_index_exists:
+                    await conn.execute(text("CREATE INDEX ix_likes_user_id ON likes(user_id)"))
+                    print("User index created for likes table.")
+                
+                if not post_index_exists:
+                    await conn.execute(text("CREATE INDEX ix_likes_post_id ON likes(post_id)"))
+                    print("Post index created for likes table.")
+                
+                if not created_index_exists:
+                    await conn.execute(text("CREATE INDEX ix_likes_created_at ON likes(created_at)"))
+                    print("Created at index created for likes table.")
+            
             print("All migrations completed successfully!")
     except Exception as e:
         print(f"Migration failed: {str(e)}")

@@ -299,6 +299,125 @@ async def create_post(
     # Redirect back to profile page
     return RedirectResponse(url=f"/profile?email={email}", status_code=303)
 
+@app.post("/like-post", response_class=HTMLResponse)
+async def like_post(
+    request: Request,
+    email: str = Form(...),
+    post_id: int = Form(...),
+    action: str = Form(...),  # "like" or "unlike"
+    db: AsyncSession = Depends(get_db)
+):
+    # Verify user exists
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        return HTMLResponse("User not found", status_code=404)
+    
+    # Verify post exists
+    result = await db.execute(select(Post).where(Post.id == post_id))
+    post = result.scalars().first()
+    
+    if not post:
+        return HTMLResponse("Post not found", status_code=404)
+    
+    try:
+        if action == "like":
+            # Check if user already liked this post
+            result = await db.execute(
+                select(Like).where(Like.user_id == user.id, Like.post_id == post_id)
+            )
+            existing_like = result.scalars().first()
+            
+            if existing_like:
+                return HTMLResponse("Already liked", status_code=200)
+            
+            # Create new like
+            new_like = Like(user_id=user.id, post_id=post_id)
+            db.add(new_like)
+            
+            # Update post likes count
+            post.likes_count += 1
+            
+        elif action == "unlike":
+            # Find and remove the like
+            result = await db.execute(
+                select(Like).where(Like.user_id == user.id, Like.post_id == post_id)
+            )
+            like = result.scalars().first()
+            
+            if like:
+                await db.delete(like)
+                # Update post likes count
+                post.likes_count = max(0, post.likes_count - 1)
+        
+        await db.commit()
+        
+        # Return updated likes count
+        return HTMLResponse(str(post.likes_count), status_code=200)
+        
+    except Exception as e:
+        await db.rollback()
+        return HTMLResponse(f"Error: {str(e)}", status_code=500)
+
+@app.get("/feed", response_class=HTMLResponse)
+async def feed(request: Request, db: AsyncSession = Depends(get_db)):
+    # Fetch all public posts with user information, ordered by most recent
+    result = await db.execute(
+        select(Post, User.email)
+        .join(User, Post.user_id == User.id)
+        .where(Post.visibility == "public")
+        .order_by(Post.created_at.desc())
+    )
+    
+    posts_with_users = result.all()
+    
+    # Format the data for the template
+    formatted_posts = []
+    for post, user_email in posts_with_users:
+        # Load user profile information separately
+        user_name = user_email.split('@')[0]
+        user_profile_pic = None
+        
+        # Query for the user's profile
+        profile_result = await db.execute(
+            select(Profile).where(Profile.user_id == post.user_id)
+        )
+        profile = profile_result.scalars().first()
+        
+        if profile:
+            user_name = profile.name if profile.name else user_name
+            # Query for profile image if profile exists
+            profile_image_result = await db.execute(
+                select(ProfileImage).where(ProfileImage.user_id == post.user_id)
+            )
+            profile_image = profile_image_result.scalars().first()
+            if profile_image:
+                user_profile_pic = profile_image.profile_pic
+        
+        formatted_posts.append({
+            "id": post.id,
+            "content": post.content,
+            "image_url": post.image_url,
+            "visibility": post.visibility,
+            "likes_count": post.likes_count,
+            "comments_count": post.comments_count,
+            "shares_count": post.shares_count,
+            "created_at": post.created_at,
+            "user_email": user_email,
+            "user_name": user_name,
+            "user_profile_pic": user_profile_pic
+        })
+    
+    return templates.TemplateResponse(
+        "feed.html", 
+        {
+            "request": request, 
+            "posts": formatted_posts,
+            "current_user_email": request.cookies.get("user_email")
+        }
+    )
+
 @app.get("/plans", response_class=HTMLResponse)
 async def plans(request: Request):
     return templates.TemplateResponse("plans.html", {"request": request})

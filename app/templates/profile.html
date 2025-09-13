@@ -1692,7 +1692,7 @@ block content %}
                         </button>
                     </div>
                     {% for post in user.posts %}
-                    <div class="post">
+                    <div class="post" data-post-id="{{ post.id }}">
                         <div class="post-header">
                             <div class="post-avatar">{{ post.user_name[:2]|upper }}</div>
                             <div class="post-meta">
@@ -1894,23 +1894,45 @@ block content %}
                 });
             });
             
-            // Like functionality for posts
+            // Like functionality for posts with AJAX
             const likeButtons = document.querySelectorAll('.post-action:first-child');
             likeButtons.forEach(button => {
-                button.addEventListener('click', function() {
+                button.addEventListener('click', async function() {
                     const icon = this.querySelector('i');
                     const count = this.querySelector('span');
+                    const postId = this.closest('.post-card').dataset.postId;
+                    const isLiked = icon.classList.contains('fas');
                     
-                    if (icon.classList.contains('far')) {
-                        icon.classList.remove('far');
-                        icon.classList.add('fas');
-                        count.textContent = parseInt(count.textContent) + 1;
-                        this.style.color = '#4A6CF7';
-                    } else {
-                        icon.classList.remove('fas');
-                        icon.classList.add('far');
-                        count.textContent = parseInt(count.textContent) - 1;
-                        this.style.color = '';
+                    try {
+                        const response = await fetch('/api/posts/' + postId + '/like', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                action: isLiked ? 'unlike' : 'like'
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            if (isLiked) {
+                                icon.classList.remove('fas');
+                                icon.classList.add('far');
+                                count.textContent = data.likes_count;
+                                this.style.color = '';
+                            } else {
+                                icon.classList.remove('far');
+                                icon.classList.add('fas');
+                                count.textContent = data.likes_count;
+                                this.style.color = '#4A6CF7';
+                            }
+                        } else {
+                            console.error('Failed to update like status');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
                     }
                 });
             });

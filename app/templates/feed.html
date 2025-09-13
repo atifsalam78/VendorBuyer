@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+
+{% block title %}Public Feed - BazaarHub{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-8 mx-auto">
+            <!-- Feed Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">
+                    <i class="fas fa-globe-americas text-primary me-2"></i>
+                    Public Feed
+                </h1>
+                <div class="text-muted">
+                    <i class="fas fa-users me-1"></i>
+                    {{ posts|length }} public posts
+                </div>
+            </div>
+
+            <!-- Posts Feed -->
+            <div class="posts-feed">
+                {% if posts %}
+                    {% for post in posts %}
+                    <div class="post-card card mb-4 shadow-sm" data-post-id="{{ post.id }}">
+                        <!-- Post Header -->
+                        <div class="card-header bg-transparent d-flex align-items-center">
+                            {% if post.user_profile_pic %}
+                            <img src="{{ post.user_profile_pic }}" alt="Profile" class="post-avatar rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                            {% else %}
+                            <div class="post-avatar bg-primary text-white d-flex align-items-center justify-content-center rounded-circle me-3" style="width: 40px; height: 40px; font-size: 14px;">
+                                {{ post.user_name[:2]|upper }}
+                            </div>
+                            {% endif %}
+                            <div class="flex-grow-1">
+                                <h6 class="mb-0 fw-bold">{{ post.user_name }}</h6>
+                                <small class="text-muted">
+                                    <i class="far fa-clock me-1"></i>
+                                    {{ post.created_at.strftime('%b %d, %Y at %H:%M') }}
+                                </small>
+                            </div>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-outline-secondary border-0" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-h"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="#"><i class="fas fa-flag me-2"></i>Report</a></li>
+                                    <li><a class="dropdown-item" href="#"><i class="fas fa-ban me-2"></i>Hide</a></li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Post Content -->
+                        <div class="card-body">
+                            <p class="card-text mb-3">{{ post.content }}</p>
+                            
+                            {% if post.image_url %}
+                            <div class="post-image mb-3">
+                                <img src="{{ post.image_url }}" alt="Post image" class="img-fluid rounded" style="max-height: 400px; width: auto;">
+                            </div>
+                            {% endif %}
+
+                            <!-- Post Stats -->
+                            <div class="d-flex justify-content-between text-muted small mb-3">
+                                <span><i class="fas fa-heart me-1"></i>{{ post.likes_count }} likes</span>
+                                <span><i class="fas fa-comment me-1"></i>{{ post.comments_count }} comments</span>
+                                <span><i class="fas fa-share me-1"></i>{{ post.shares_count }} shares</span>
+                            </div>
+
+                            <!-- Post Actions -->
+                            <div class="post-actions d-flex justify-content-around border-top border-bottom py-2">
+                                <button class="post-action btn btn-link text-decoration-none text-muted">
+                                    <i class="far fa-thumbs-up me-1"></i>Like
+                                </button>
+                                <button class="post-action btn btn-link text-decoration-none text-muted">
+                                    <i class="far fa-comment me-1"></i>Comment
+                                </button>
+                                <button class="post-action btn btn-link text-decoration-none text-muted">
+                                    <i class="far fa-share-square me-1"></i>Share
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Empty State -->
+                    <div class="text-center py-5">
+                        <div class="empty-state-icon mb-3">
+                            <i class="fas fa-newspaper fa-3x text-muted"></i>
+                        </div>
+                        <h4 class="text-muted mb-3">No public posts yet</h4>
+                        <p class="text-muted mb-4">Be the first to share something with the community!</p>
+                        {% if current_user_email %}
+                        <a href="/profile?email={{ current_user_email }}" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-2"></i>Create Your First Post
+                        </a>
+                        {% else %}
+                        <a href="/" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt me-2"></i>Sign In to Post
+                        </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.post-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    transition: box-shadow 0.2s ease;
+}
+
+.post-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.post-avatar {
+    width: 40px;
+    height: 40px;
+    object-fit: cover;
+}
+
+.post-action {
+    transition: color 0.2s ease;
+}
+
+.post-action:hover {
+    color: #4A6CF7 !important;
+}
+
+.empty-state-icon {
+    opacity: 0.5;
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Like functionality for posts with AJAX
+const likeButtons = document.querySelectorAll('.post-action:first-child');
+likeButtons.forEach(button => {
+    button.addEventListener('click', async function() {
+        const icon = this.querySelector('i');
+        const postId = this.closest('.post-card').dataset.postId;
+        const isLiked = icon.classList.contains('fas');
+        
+        try {
+            const response = await fetch('/api/posts/' + postId + '/like', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    action: isLiked ? 'unlike' : 'like'
+                })
+            });
+            
+            if (response.ok) {
+                const data = await response.json();
+                
+                if (isLiked) {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    this.querySelector('.me-1').nextSibling.textContent = 'Like';
+                } else {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    this.querySelector('.me-1').nextSibling.textContent = 'Liked';
+                }
+                
+                // Update likes count display
+                const likesCountElement = this.closest('.post-card').querySelector('[class*="fa-heart"]').parentNode;
+                likesCountElement.textContent = data.likes_count + ' likes';
+                
+            } else {
+                console.error('Failed to update like status');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+        }
+    });
+});
+</script>
+{% endblock %}

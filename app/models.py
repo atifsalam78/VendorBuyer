@@ -69,6 +69,23 @@ class Profile(Base):
     # Relationships
     user = relationship("User", back_populates="profile")
 
+class Like(Base):
+    __tablename__ = "likes"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    post_id = Column(Integer, ForeignKey("posts.id"), index=True)
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    post = relationship("Post", back_populates="likes")
+    
+    # Unique constraint to prevent duplicate likes
+    __table_args__ = (
+        Index('ix_likes_user_post', 'user_id', 'post_id', unique=True),
+    )
+
 class Post(Base):
     __tablename__ = "posts"
     
@@ -85,6 +102,7 @@ class Post(Base):
     
     # Relationships
     user = relationship("User")
+    likes = relationship("Like", back_populates="post", cascade="all, delete-orphan")
     
     # Add indexes for high traffic optimization
     __table_args__ = (
