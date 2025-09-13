@@ -1697,7 +1697,7 @@ block content %}
                             <div class="post-avatar">{{ post.user_name[:2]|upper }}</div>
                             <div class="post-meta">
                                 <h4>{{ post.user_name }}</h4>
-                                <span>Posted {{ post.created_at.strftime('%b %d, %Y') }}</span>
+                                <span>Posted {{ post.created_at.strftime('%b %d, %Y %H:%M:%S') }}</span>
                             </div>
                         </div>
                         <div class="post-content">
