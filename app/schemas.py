@@ -45,3 +45,29 @@ class ProfileResponse(ProfileBase):
     
     class Config:
         from_attributes = True
+
+# Post schemas
+class PostBase(BaseModel):
+    content: str
+    image_url: Optional[str] = None
+    visibility: str = "public"
+
+class PostCreate(PostBase):
+    pass
+
+class PostUpdate(BaseModel):
+    content: Optional[str] = None
+    image_url: Optional[str] = None
+    visibility: Optional[str] = None
+
+class PostResponse(PostBase):
+    id: int
+    user_id: int
+    likes_count: int
+    comments_count: int
+    shares_count: int
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True

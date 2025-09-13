@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, DateTime, Text, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
@@ -68,3 +68,27 @@ class Profile(Base):
     
     # Relationships
     user = relationship("User", back_populates="profile")
+
+class Post(Base):
+    __tablename__ = "posts"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)  # Indexed for high traffic
+    content = Column(Text, nullable=False)
+    image_url = Column(String, nullable=True)
+    visibility = Column(String, default="public")  # public, connections, private
+    likes_count = Column(Integer, default=0)
+    comments_count = Column(Integer, default=0)
+    shares_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    
+    # Add indexes for high traffic optimization
+    __table_args__ = (
+        Index('ix_posts_created_at', 'created_at'),  # For sorting by recent posts
+        Index('ix_posts_user_created', 'user_id', 'created_at'),  # For user-specific feeds
+        Index('ix_posts_visibility', 'visibility'),  # For visibility filtering
+    )

@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 # Import routers
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db
-from app.models import User, Profile, ProfileImage
+from app.models import User, Profile, ProfileImage, Post
 from app.auth import verify_password
 
 app = FastAPI(title="BazaarHub")
@@ -104,6 +104,15 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db)):
     profile_image_result = await db.execute(select(ProfileImage).where(ProfileImage.user_id == user.id))
     profile_image = profile_image_result.scalars().first()
     
+    # Query posts for the user (most recent first)
+    posts_result = await db.execute(
+        select(Post)
+        .where(Post.user_id == user.id)
+        .order_by(Post.created_at.desc())
+        .limit(20)  # Limit to 20 most recent posts for performance
+    )
+    posts = posts_result.scalars().all()
+    
     # Create user data dictionary with actual user data
     user_data = {
         "id": user.id,
@@ -139,7 +148,21 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db)):
         "profile_image": {
             "profile_pic": profile_image.profile_pic if profile_image else None,
             "banner_pic": profile_image.banner_pic if profile_image else None
-        }
+        },
+        "posts": [
+            {
+                "id": post.id,
+                "content": post.content,
+                "image_url": post.image_url,
+                "visibility": post.visibility,
+                "likes_count": post.likes_count,
+                "comments_count": post.comments_count,
+                "shares_count": post.shares_count,
+                "created_at": post.created_at,
+                "user_name": profile.name or user.email.split("@")[0]
+            }
+            for post in posts
+        ]
     }
     
     return templates.TemplateResponse("profile.html", {"request": request, "user": user_data})
@@ -227,6 +250,51 @@ async def update_profile(request: Request, email: str = Form(...), tagline: str 
     
     # Commit changes to database
     await db.commit()
+    
+    # Redirect back to profile page
+    return RedirectResponse(url=f"/profile?email={email}", status_code=303)
+
+@app.post("/create-post", response_class=HTMLResponse)
+async def create_post(
+    request: Request,
+    email: str = Form(...),
+    content: str = Form(...),
+    visibility: str = Form("public"),
+    post_image: UploadFile = File(None),
+    db: AsyncSession = Depends(get_db)
+):
+    # Verify user exists
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    
+    # Handle image upload if provided
+    image_url = None
+    if post_image and post_image.filename:
+        # Generate a unique filename
+        file_extension = post_image.filename.split(".")[-1]
+        unique_filename = f"{uuid4()}.{file_extension}"
+        file_path = f"app/static/uploads/{unique_filename}"
+        
+        # Save the uploaded file
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(post_image.file, buffer)
+        
+        image_url = f"/static/uploads/{unique_filename}"
+    
+    # Create new post
+    new_post = Post(
+        user_id=user.id,
+        content=content,
+        image_url=image_url,
+        visibility=visibility
+    )
+    
+    db.add(new_post)
+    await db.commit()
+    await db.refresh(new_post)
     
     # Redirect back to profile page
     return RedirectResponse(url=f"/profile?email={email}", status_code=303)

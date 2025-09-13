@@ -2215,95 +2215,21 @@ block content %}
                     this.style.transform = 'scale(0.98)';
                     this.style.opacity = '0.9';
                     
-                    // Simulate API call with timeout
-                    setTimeout(function() {
-                        // Here you would handle the actual post submission to the server
-                        
-                        // Close the modal
-                        const modal = bootstrap.Modal.getInstance(document.getElementById('createPostModal'));
-                        modal.hide();
-                        
-                        // Reset form with animation
-                        createPostForm.reset();
-                        imagePreviewContainer.classList.add('d-none');
-                        
-                        // Reset form animation
-                        createPostForm.style.transform = 'scale(1)';
-                        createPostForm.style.opacity = '1';
-                        
-                        // Reset button state with animation
-                        submitBtn.disabled = false;
-                        submitBtn.innerHTML = originalText;
-                        submitBtn.classList.remove('active-tool');
-                        
-                        // Show success message with enhanced toast animation
-                        const toastContainer = document.getElementById('toast-container');
-                        const toast = document.createElement('div');
-                        toast.className = 'toast show';
-                        toast.setAttribute('role', 'alert');
-                        toast.setAttribute('aria-live', 'assertive');
-                        toast.setAttribute('aria-atomic', 'true');
-                        toast.style.boxShadow = '0 5px 15px rgba(0,0,0,0.2)';
-                        toast.style.borderRadius = '10px';
-                        toast.style.overflow = 'hidden';
-                        toast.innerHTML = `
-                            <div class="toast-header bg-success text-white">
-                                <strong class="me-auto"><i class="fas fa-check-circle fa-pulse me-1"></i> Success</strong>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
-                            </div>
-                            <div class="toast-body">
-                                <div class="d-flex align-items-center">
-                                    <div class="me-3">
-                                        <i class="fas fa-paper-plane fa-2x text-success opacity-75"></i>
-                                    </div>
-                                    <div>
-                                        Your post has been published successfully!
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        
-                        toastContainer.appendChild(toast);
-                        
-                        // Add progress bar to indicate auto-dismissal
-                        const progressBar = document.createElement('div');
-                        progressBar.className = 'progress';
-                        progressBar.style.height = '3px';
-                        progressBar.style.marginTop = '-3px';
-                        
-                        const progressIndicator = document.createElement('div');
-                        progressIndicator.className = 'progress-bar bg-success';
-                        progressIndicator.style.width = '100%';
-                        progressIndicator.style.transition = 'width 5s linear';
-                        
-                        progressBar.appendChild(progressIndicator);
-                        toast.appendChild(progressBar);
-                        
-                        // Start progress animation
-                        setTimeout(() => {
-                            progressIndicator.style.width = '0%';
-                        }, 100);
-                        
-                        // Auto-remove toast after 5 seconds
-                        setTimeout(function() {
-                            toast.style.opacity = '0';
-                            toast.style.transform = 'translateX(100%)';
-                            setTimeout(() => {
-                                toast.remove();
-                            }, 300);
-                        }, 5000);
-                        
-                        // Add close button functionality
-                        const closeBtn = toast.querySelector('.btn-close');
-                        if (closeBtn) {
-                            closeBtn.addEventListener('click', function() {
-                                toast.remove();
-                            });
-                        }
-                    }, 1500); // Simulate network delay
-                });
-            }
+                    // Submit the form to the actual backend
+            this.submit();
         });
+    }
+    
+    // Sync visibility dropdown with hidden input
+    const visibilityDropdown = document.getElementById('post-visibility');
+    const visibilityInput = document.getElementById('post-visibility-input');
+    
+    if (visibilityDropdown && visibilityInput) {
+        visibilityDropdown.addEventListener('change', function() {
+            visibilityInput.value = this.value;
+        });
+    }
+});
     </script>
     
     <!-- Create Post Modal -->
@@ -2331,9 +2257,11 @@ block content %}
                             </select>
                         </div>
                     </div>
-                    <form id="create-post-form">
+                    <form id="create-post-form" action="/create-post" method="post" enctype="multipart/form-data">
+                        <input type="hidden" name="email" value="{{ user['email'] }}">
+                        <input type="hidden" name="visibility" id="post-visibility-input" value="public">
                         <div class="mb-4">
-                            <textarea class="form-control border-0 bg-light p-3" id="post-content" rows="5" placeholder="What would you like to share with your network?" required style="border-radius: 15px;"></textarea>
+                            <textarea class="form-control border-0 bg-light p-3" id="post-content" name="content" rows="5" placeholder="What would you like to share with your network?" required style="border-radius: 15px;"></textarea>
                         </div>
                         <div class="image-preview-container mb-4 d-none" id="image-preview-container">
                             <div class="position-relative">
@@ -2357,7 +2285,7 @@ block content %}
                                 <button type="button" class="btn btn-light rounded-circle me-2" id="add-location-btn" title="Add Location">
                                     <i class="fas fa-map-marker-alt"></i>
                                 </button>
-                                <input type="file" id="post-image" class="d-none" accept="image/*">
+                                <input type="file" id="post-image" name="post_image" class="d-none" accept="image/*">
                             </div>
                             <div>
                                 <button type="button" class="btn btn-outline-secondary me-2" data-bs-dismiss="modal">Cancel</button>
