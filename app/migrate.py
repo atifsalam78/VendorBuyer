@@ -180,7 +180,7 @@ async def migrate():
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
-                ")))
+                """))
                 print("posts table created successfully.")
                 
                 # Create indexes for high traffic optimization

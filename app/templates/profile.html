@@ -1691,55 +1691,36 @@ block content %}
                             <i class="fas fa-plus-circle"></i> Create New Post
                         </button>
                     </div>
+                    {% for post in user.posts %}
                     <div class="post">
                         <div class="post-header">
-                            <div class="post-avatar">TS</div>
+                            <div class="post-avatar">{{ post.user_name[:2]|upper }}</div>
                             <div class="post-meta">
-                                <h4>TechSolutions Inc.</h4>
-                                <span>Posted 2 days ago</span>
+                                <h4>{{ post.user_name }}</h4>
+                                <span>Posted {{ post.created_at.strftime('%b %d, %Y') }}</span>
                             </div>
                         </div>
                         <div class="post-content">
-                            <p>We're excited to announce the launch of our new cybersecurity suite, designed to protect businesses from emerging threats in the digital landscape. This comprehensive solution includes advanced threat detection, real-time monitoring, and rapid response capabilities.</p>
+                            <p>{{ post.content }}</p>
                         </div>
+                        {% if post.image_url %}
+                        <div class="post-image">
+                            <img src="/static/uploads/{{ post.image_url }}" alt="Post image" style="width: 100%; height: auto; border-radius: 8px;">
+                        </div>
+                        {% endif %}
                         <div class="post-actions">
                             <div class="post-action">
-                                <i class="far fa-thumbs-up"></i> <span>248</span>
+                                <i class="far fa-thumbs-up"></i> <span>{{ post.likes_count }}</span>
                             </div>
                             <div class="post-action">
-                                <i class="far fa-comment"></i> <span>42</span>
+                                <i class="far fa-comment"></i> <span>{{ post.comments_count }}</span>
                             </div>
                             <div class="post-action">
-                                <i class="far fa-share-square"></i> <span>18</span>
+                                <i class="far fa-share-square"></i> <span>{{ post.shares_count }}</span>
                             </div>
                         </div>
                     </div>
-                    <div class="post">
-                        <div class="post-header">
-                            <div class="post-avatar">TS</div>
-                            <div class="post-meta">
-                                <h4>TechSolutions Inc.</h4>
-                                <span>Posted 1 week ago</span>
-                            </div>
-                        </div>
-                        <div class="post-content">
-                            <p>We're proud to share that TechSolutions Inc. has been recognized as one of the "Top 100 Technology Companies to Watch" by Technology Today magazine. This acknowledgment reflects our commitment to innovation and excellence.</p>
-                        </div>
-                        <div class="post-image" style="height: 200px; background: linear-gradient(135deg, #4A6CF7 0%, #8AABFF 100%); display: flex; align-items: center; justify-content: center; color: white;">
-                            <i class="fas fa-trophy" style="font-size: 48px;"></i>
-                        </div>
-                        <div class="post-actions">
-                            <div class="post-action">
-                                <i class="far fa-thumbs-up"></i> <span>512</span>
-                            </div>
-                            <div class="post-action">
-                                <i class="far fa-comment"></i> <span>87</span>
-                            </div>
-                            <div class="post-action">
-                                <i class="far fa-share-square"></i> <span>34</span>
-                            </div>
-                        </div>
-                    </div>
+                    {% endfor %}
                 </div>
 
                 <!-- Products Showcase -->
