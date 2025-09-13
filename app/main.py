@@ -9,12 +9,15 @@ from pathlib import Path
 import uvicorn
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import insert, update, delete
 
 # Import routers
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db
-from app.models import User, Profile, ProfileImage, Post
+from app.models import User, Profile, ProfileImage, Post, Like
 from app.auth import verify_password
+from app.redis_cache import get_redis_cache, RedisCache
+from app.rate_limiter import get_rate_limiter, RateLimiter
 
 app = FastAPI(title="BazaarHub")
 
@@ -68,8 +71,11 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
     # Get the actual email for the profile page
     user_email = user.email
     
-    # Redirect to profile page with email parameter
-    return RedirectResponse(url=f"/profile?email={user_email}", status_code=303)
+    # Create redirect response with user_email cookie
+    response = RedirectResponse(url=f"/profile?email={user_email}", status_code=303)
+    response.set_cookie(key="user_email", value=user_email, httponly=False, max_age=3600)  # 1 hour expiration, accessible to JavaScript
+    
+    return response
 
 @app.get("/about", response_class=HTMLResponse)
 async def about(request: Request):
@@ -305,56 +311,105 @@ async def like_post(
     email: str = Form(...),
     post_id: int = Form(...),
     action: str = Form(...),  # "like" or "unlike"
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    redis_cache: RedisCache = Depends(get_redis_cache),
+    rate_limiter: RateLimiter = Depends(get_rate_limiter)
 ):
-    # Verify user exists
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalars().first()
-    
-    if not user:
-        return HTMLResponse("User not found", status_code=404)
-    
-    # Verify post exists
-    result = await db.execute(select(Post).where(Post.id == post_id))
-    post = result.scalars().first()
-    
-    if not post:
-        return HTMLResponse("Post not found", status_code=404)
-    
     try:
+        # Debug logging
+        print(f"Like request - email: {email}, post_id: {post_id}, action: {action}")
+        
+        # Verify user exists
+        user_result = await db.execute(select(User).where(User.email == email))
+        user = user_result.scalars().first()
+        
+        # Verify post exists
+        post_result = await db.execute(select(Post).where(Post.id == post_id))
+        post = post_result.scalars().first()
+        
+        print(f"User found: {user is not None}, Post found: {post is not None}")
+        
+        if not user or not post:
+            return HTMLResponse("User or post not found", status_code=404)
+        
+        # Apply rate limiting for like actions only
         if action == "like":
-            # Check if user already liked this post
-            result = await db.execute(
+            # Check rate limit
+            if not await rate_limiter.check_rate_limit(user.id, "like"):
+                return HTMLResponse("Rate limit exceeded. Please try again later.", status_code=429)
+            
+            # Increment rate limit counter
+            await rate_limiter.increment_rate_limit(user.id, "like")
+            
+            # Check if like already exists first
+            existing_like_result = await db.execute(
                 select(Like).where(Like.user_id == user.id, Like.post_id == post_id)
             )
-            existing_like = result.scalars().first()
+            existing_like = existing_like_result.scalars().first()
+            print(f"Existing like found: {existing_like is not None}")
             
             if existing_like:
+                # User already liked this post
+                print("User already liked this post")
                 return HTMLResponse("Already liked", status_code=200)
             
-            # Create new like
+            # Insert new like
             new_like = Like(user_id=user.id, post_id=post_id)
             db.add(new_like)
             
-            # Update post likes count
-            post.likes_count += 1
-            
-        elif action == "unlike":
-            # Find and remove the like
-            result = await db.execute(
-                select(Like).where(Like.user_id == user.id, Like.post_id == post_id)
+            # Update likes count
+            await db.execute(
+                update(Post)
+                .where(Post.id == post_id)
+                .values(likes_count=Post.likes_count + 1)
             )
-            like = result.scalars().first()
             
-            if like:
-                await db.delete(like)
-                # Update post likes count
-                post.likes_count = max(0, post.likes_count - 1)
+            # Update Redis cache
+            await redis_cache.increment_likes_count(post_id)
+            
+            print("Like successfully added")
+                
+        elif action == "unlike":
+            # Use atomic DELETE and update in single transaction
+            delete_result = await db.execute(
+                delete(Like)
+                .where(Like.user_id == user.id, Like.post_id == post_id)
+                .returning(Like.id)
+            )
+            
+            if delete_result.rowcount > 0:
+                # Only update count if a like was actually removed
+                await db.execute(
+                    update(Post)
+                    .where(Post.id == post_id)
+                    .values(likes_count=Post.likes_count - 1)
+                )
+                
+                # Update Redis cache
+                await redis_cache.decrement_likes_count(post_id)
         
         await db.commit()
         
-        # Return updated likes count
-        return HTMLResponse(str(post.likes_count), status_code=200)
+        # Refresh the post object to get the updated likes_count
+        await db.refresh(post)
+        
+        # Debug: Check if the post was actually updated
+        result = await db.execute(select(Post.likes_count).where(Post.id == post_id))
+        db_likes_count = result.scalar()
+        print(f"After commit - Post ID {post_id} likes count in DB: {db_likes_count}")
+        print(f"Post object likes_count: {post.likes_count}")
+        
+        # Get updated likes count - try cache first, then database
+        cached_count = await redis_cache.get_likes_count(post_id)
+        if cached_count is not None:
+            updated_likes = cached_count
+        else:
+            updated_likes = post.likes_count
+            # Cache the result
+            await redis_cache.set_likes_count(post_id, updated_likes)
+        
+        print(f"Returning likes count: {updated_likes}")
+        return HTMLResponse(str(updated_likes), status_code=200)
         
     except Exception as e:
         await db.rollback()

@@ -150,18 +150,38 @@ likeButtons.forEach(button => {
         const isLiked = icon.classList.contains('fas');
         
         try {
-            const response = await fetch('/api/posts/' + postId + '/like', {
+            // Create form data for the like-post endpoint
+            const formData = new FormData();
+            formData.append('post_id', postId);
+            formData.append('action', isLiked ? 'unlike' : 'like');
+            
+            // Get current user email from the page or cookie
+            const currentUserEmail = '{{ current_user_email }}' || getCookie('user_email');
+            console.log('Current user email:', currentUserEmail);
+            console.log('Template email:', '{{ current_user_email }}');
+            console.log('Cookie email:', getCookie('user_email'));
+            console.log('All cookies:', document.cookie);
+            console.log('Post ID:', postId);
+            console.log('Action:', isLiked ? 'unlike' : 'like');
+            
+            if (!currentUserEmail) {
+                alert('Please log in to like posts');
+                return;
+            }
+            formData.append('email', currentUserEmail);
+            
+            // Log form data for debugging
+            for (let [key, value] of formData.entries()) {
+                console.log(`FormData: ${key} = ${value}`);
+            }
+            
+            const response = await fetch('/like-post', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    action: isLiked ? 'unlike' : 'like'
-                })
+                body: formData
             });
             
             if (response.ok) {
-                const data = await response.json();
+                const updatedLikes = await response.text();
                 
                 if (isLiked) {
                     icon.classList.remove('fas');
@@ -175,15 +195,26 @@ likeButtons.forEach(button => {
                 
                 // Update likes count display
                 const likesCountElement = this.closest('.post-card').querySelector('[class*="fa-heart"]').parentNode;
-                likesCountElement.textContent = data.likes_count + ' likes';
+                likesCountElement.textContent = updatedLikes + ' likes';
                 
             } else {
-                console.error('Failed to update like status');
+                const errorText = await response.text();
+                console.error('Failed to update like status:', errorText);
+                if (response.status === 429) {
+                    alert('Rate limit exceeded. Please try again later.');
+                }
             }
         } catch (error) {
             console.error('Error:', error);
         }
     });
 });
+
+// Helper function to get cookie value
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
 </script>
 {% endblock %}
