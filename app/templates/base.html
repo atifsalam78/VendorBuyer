@@ -32,7 +32,7 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </a>
-                    {% if current_user_email %}
+                    {% if current_user_email and request.url.path != "/" %}
                     <div class="user-profile-nav">
                         <a href="/profile" class="nav-link profile-picture-link">
                             {% if current_user_profile_pic %}
@@ -43,6 +43,7 @@
                         </a>
                     </div>
                     {% endif %}
+                    <!-- DEBUG: current_user_email={{ current_user_email }}, path={{ request.url.path }}, full_url={{ request.url }} -->
                 </div>
             </div>
         </nav>

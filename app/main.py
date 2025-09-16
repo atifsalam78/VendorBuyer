@@ -180,7 +180,8 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db), current_
     return templates.TemplateResponse("profile.html", {
         "request": request, 
         "user": user_data,
-        "current_user_profile_pic": current_user_profile_pic
+        "current_user_profile_pic": current_user_profile_pic,
+        "current_user_email": email
     })
 
 @app.post("/upload-images", response_class=HTMLResponse)
