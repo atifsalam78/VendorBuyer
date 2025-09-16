@@ -84,7 +84,8 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
 async def about(request: Request, current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     return templates.TemplateResponse("about.html", {
         "request": request,
-        "current_user_profile_pic": current_user_profile_pic
+        "current_user_profile_pic": current_user_profile_pic,
+        "current_user_email": request.cookies.get("user_email")
     })
 
 @app.get("/profile", response_class=HTMLResponse)
@@ -486,8 +487,12 @@ async def feed(request: Request, db: AsyncSession = Depends(get_db), current_use
     )
 
 @app.get("/plans", response_class=HTMLResponse)
-async def plans(request: Request):
-    return templates.TemplateResponse("plans.html", {"request": request})
+async def plans(request: Request, current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+    return templates.TemplateResponse("plans.html", {
+        "request": request,
+        "current_user_profile_pic": current_user_profile_pic,
+        "current_user_email": request.cookies.get("user_email")
+    })
 
 @app.get("/register", response_class=HTMLResponse)
 async def register(request: Request):
