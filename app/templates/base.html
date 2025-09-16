@@ -34,13 +34,25 @@
                     </a>
                     {% if current_user_email and request.url.path != "/" %}
                     <div class="user-profile-nav">
-                        <a href="/profile" class="nav-link profile-picture-link">
-                            {% if current_user_profile_pic %}
-                                <img src="{{ current_user_profile_pic }}" alt="Profile" class="profile-picture-nav" id="nav-profile-pic">
-                            {% else %}
-                                <img src="/static/uploads/default-profile.svg" alt="Profile" class="profile-picture-nav" id="nav-profile-pic">
-                            {% endif %}
-                        </a>
+                        <div class="profile-dropdown">
+                            <button class="profile-picture-btn" id="profile-dropdown-toggle">
+                                {% if current_user_profile_pic %}
+                                    <img src="{{ current_user_profile_pic }}" alt="Profile" class="profile-picture-nav">
+                                {% else %}
+                                    <img src="/static/uploads/default-profile.svg" alt="Profile" class="profile-picture-nav">
+                                {% endif %}
+                            </button>
+                            <div class="custom-dropdown-menu" id="profile-dropdown-menu">
+                                <a href="/profile" class="dropdown-item">
+                                    <i class="fas fa-user"></i>
+                                    Profile
+                                </a>
+                                <a href="/" class="dropdown-item" id="logout-btn">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                    Logout
+                                </a>
+                            </div>
+                        </div>
                     </div>
                     {% endif %}
                     <!-- DEBUG: current_user_email={{ current_user_email }}, path={{ request.url.path }}, full_url={{ request.url }} -->
