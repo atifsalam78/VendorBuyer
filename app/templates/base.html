@@ -32,6 +32,17 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </a>
+                    {% if current_user_email %}
+                    <div class="user-profile-nav">
+                        <a href="/profile" class="nav-link profile-picture-link">
+                            {% if current_user_profile_pic %}
+                                <img src="{{ current_user_profile_pic }}" alt="Profile" class="profile-picture-nav" id="nav-profile-pic">
+                            {% else %}
+                                <img src="/static/uploads/default-profile.svg" alt="Profile" class="profile-picture-nav" id="nav-profile-pic">
+                            {% endif %}
+                        </a>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </nav>

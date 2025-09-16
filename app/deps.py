@@ -1,7 +1,9 @@
+from fastapi import Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import select
 from app.config import settings
-from app.models import Base
+from app.models import Base, User, ProfileImage
 
 # Create async engine
 engine = create_async_engine(settings.DATABASE_URL, echo=True)
@@ -23,3 +25,25 @@ async def get_db():
             yield session
         finally:
             await session.close()
+
+# Dependency to get current user profile picture
+async def get_current_user_profile_pic(request: Request, db: AsyncSession = Depends(get_db)):
+    user_email = request.cookies.get("user_email")
+    if not user_email:
+        return None
+    
+    # Query the database for the user
+    result = await db.execute(select(User).where(User.email == user_email))
+    user = result.scalars().first()
+    
+    if not user:
+        return None
+    
+    # Query the profile image for the user
+    profile_image_result = await db.execute(select(ProfileImage).where(ProfileImage.user_id == user.id))
+    profile_image = profile_image_result.scalars().first()
+    
+    if profile_image and profile_image.profile_pic:
+        return profile_image.profile_pic
+    
+    return None

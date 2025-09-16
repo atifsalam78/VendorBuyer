@@ -13,7 +13,7 @@ from sqlalchemy import insert, update, delete
 
 # Import routers
 from app.routers import register, validate, taxonomy
-from app.deps import init_db, get_db
+from app.deps import init_db, get_db, get_current_user_profile_pic
 from app.models import User, Profile, ProfileImage, Post, Like
 from app.auth import verify_password
 from app.redis_cache import get_redis_cache, RedisCache
@@ -46,8 +46,11 @@ async def startup_db_client():
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
-async def index(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def index(request: Request, current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+    return templates.TemplateResponse("index.html", {
+        "request": request,
+        "current_user_profile_pic": current_user_profile_pic
+    })
 
 @app.post("/login", response_class=HTMLResponse)
 async def login(request: Request, email: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
@@ -78,11 +81,14 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
     return response
 
 @app.get("/about", response_class=HTMLResponse)
-async def about(request: Request):
-    return templates.TemplateResponse("about.html", {"request": request})
+async def about(request: Request, current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+    return templates.TemplateResponse("about.html", {
+        "request": request,
+        "current_user_profile_pic": current_user_profile_pic
+    })
 
 @app.get("/profile", response_class=HTMLResponse)
-async def profile(request: Request, db: AsyncSession = Depends(get_db)):
+async def profile(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get email from session or query parameter (for testing)
     email = request.query_params.get("email")
     
@@ -171,7 +177,11 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db)):
         ]
     }
     
-    return templates.TemplateResponse("profile.html", {"request": request, "user": user_data})
+    return templates.TemplateResponse("profile.html", {
+        "request": request, 
+        "user": user_data,
+        "current_user_profile_pic": current_user_profile_pic
+    })
 
 @app.post("/upload-images", response_class=HTMLResponse)
 async def upload_images(
@@ -416,7 +426,7 @@ async def like_post(
         return HTMLResponse(f"Error: {str(e)}", status_code=500)
 
 @app.get("/feed", response_class=HTMLResponse)
-async def feed(request: Request, db: AsyncSession = Depends(get_db)):
+async def feed(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Fetch all public posts with user information, ordered by most recent
     result = await db.execute(
         select(Post, User.email)
@@ -469,7 +479,8 @@ async def feed(request: Request, db: AsyncSession = Depends(get_db)):
         {
             "request": request, 
             "posts": formatted_posts,
-            "current_user_email": request.cookies.get("user_email")
+            "current_user_email": request.cookies.get("user_email"),
+            "current_user_profile_pic": current_user_profile_pic
         }
     )
 

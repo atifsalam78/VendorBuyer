@@ -70,6 +70,45 @@ body {
   opacity: 0.8;
 }
 
+/* User Profile in Navbar */
+.user-profile-nav {
+  margin-left: 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.profile-picture-link {
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+
+.profile-picture-nav {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.profile-picture-nav:hover {
+  border-color: rgba(255, 255, 255, 0.8);
+  transform: scale(1.05);
+}
+
+/* Responsive adjustments for profile picture */
+@media (max-width: 768px) {
+  .user-profile-nav {
+    margin-left: 0.5rem;
+  }
+  
+  .profile-picture-nav {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 /* Main Content */
 main {
   flex: 1;
