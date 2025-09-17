@@ -152,8 +152,12 @@ function initializeProfileDropdown() {
         profileBtn.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation(); // Prevent event from bubbling to document
-            console.log('Profile clicked');
-            // Add your profile logic here
+            console.log('Profile clicked - navigating to profile page');
+            hideDropdown(); // Close dropdown first
+            // Navigate to profile page after a small delay for smooth UX
+            setTimeout(() => {
+                window.location.href = '/profile';
+            }, 100);
         });
     }
     
