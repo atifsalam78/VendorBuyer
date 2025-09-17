@@ -49,8 +49,14 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`Profile dropdown initialization attempt ${attempts}/${maxAttempts}`);
             
             try {
-                initializeProfileDropdown();
-                console.log('Profile dropdown initialized successfully');
+                // Check if dropdown container still exists before initializing
+                const dropdownContainer = document.querySelector('.profile-dropdown');
+                if (dropdownContainer) {
+                    initializeProfileDropdown();
+                    console.log('Profile dropdown initialized successfully');
+                } else {
+                    console.log('Profile dropdown container no longer exists - stopping initialization attempts');
+                }
             } catch (error) {
                 console.error('Profile dropdown initialization failed:', error);
                 
