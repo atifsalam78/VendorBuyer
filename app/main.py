@@ -16,7 +16,7 @@ from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db, get_current_user_profile_pic
 from app.models import User, Profile, ProfileImage, Post, Like
 from app.auth import verify_password, create_session, SESSION_COOKIE_NAME, delete_session, get_current_user
-from app.redis_cache import get_redis_cache, RedisCache
+from app.redis_cache import get_redis_cache, SimpleCache
 from app.rate_limiter import get_rate_limiter, RateLimiter
 
 app = FastAPI(title="BazaarHub")
@@ -119,7 +119,7 @@ async def about(request: Request, db: AsyncSession = Depends(get_db), current_us
     })
 
 @app.get("/profile", response_class=HTMLResponse)
-async def profile(request: Request, db: AsyncSession = Depends(get_db), redis_cache: RedisCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+async def profile(request: Request, db: AsyncSession = Depends(get_db), redis_cache: SimpleCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get current user from session
     current_user = await get_current_user(request, db)
     
@@ -350,22 +350,36 @@ async def create_post(
 @app.post("/like-post", response_class=HTMLResponse)
 async def like_post(
     request: Request,
-    email: str = Form(...),
+    email: str = Form(None),  # Optional - for backward compatibility
+    session_id: str = Form(None),  # New parameter for session-based authentication
     post_id: int = Form(...),
     action: str = Form(...),  # "like" or "unlike"
     db: AsyncSession = Depends(get_db),
-    redis_cache: RedisCache = Depends(get_redis_cache),
+    redis_cache: SimpleCache = Depends(get_redis_cache),
     rate_limiter: RateLimiter = Depends(get_rate_limiter)
 ):
     try:
         # Debug logging
-        print(f"Like request - email: {email}, post_id: {post_id}, action: {action}")
+        print(f"Like request - email: {email}, session_id: {session_id}, post_id: {post_id}, action: {action}")
+        
+        # Determine user email from session or direct email parameter
+        user_email = None
+        if session_id:
+            # Validate session and get user email
+            user_email = validate_session(session_id)
+            if not user_email:
+                return HTMLResponse("Invalid session", status_code=401)
+        elif email:
+            # Use direct email parameter (for backward compatibility)
+            user_email = email
+        else:
+            return HTMLResponse("Authentication required", status_code=401)
         
         # Get user and post in a single query using joins to reduce round trips
         result = await db.execute(
             select(User, Post)
             .join(Post, Post.id == post_id)
-            .where(User.email == email)
+            .where(User.email == user_email)
         )
         user_post = result.first()
         
@@ -416,12 +430,8 @@ async def like_post(
         # Force refresh the post object to get the latest count from database
         await db.refresh(post)
         
-        # Update Redis cache with the exact database value to ensure consistency
+        # Update Redis cache with the actual database value
         await redis_cache.set_likes_count(post_id, post.likes_count)
-        
-        # Debug: Check what's actually in the cache
-        cached_value = await redis_cache.get_likes_count(post_id)
-        print(f"Database likes count: {post.likes_count}, Cached value: {cached_value}")
         
         print(f"Returning likes count: {post.likes_count}")
         return HTMLResponse(str(post.likes_count), status_code=200)
@@ -431,7 +441,7 @@ async def like_post(
         return HTMLResponse(f"Error: {str(e)}", status_code=500)
 
 @app.get("/feed", response_class=HTMLResponse)
-async def feed(request: Request, db: AsyncSession = Depends(get_db), redis_cache: RedisCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+async def feed(request: Request, db: AsyncSession = Depends(get_db), redis_cache: SimpleCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get current user from session
     current_user = await get_current_user(request, db)
     

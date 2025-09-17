@@ -177,17 +177,24 @@ likeButtons.forEach(button => {
             formData.append('post_id', postId);
             formData.append('action', isLiked ? 'unlike' : 'like');
             
-            // Get current user email from the page or cookie
-            const currentUserEmail = '{{ current_user_email }}' || getCookie('user_email');
+            // Get current user email from the page or session ID cookie
+            const currentUserEmail = '{{ current_user_email }}';
+            const sessionId = getCookie('session_id');
             
-            if (!currentUserEmail) {
+            if (!currentUserEmail && !sessionId) {
                 alert('Please log in to like posts');
                 // Revert optimistic update
                 revertOptimisticUpdate(icon, this, likesCountElement, currentLikes, isLiked);
                 this.disabled = false;
                 return;
             }
-            formData.append('email', currentUserEmail);
+            
+            // Send session ID instead of email for security
+            if (sessionId) {
+                formData.append('session_id', sessionId);
+            } else {
+                formData.append('email', currentUserEmail);
+            }
             
             const response = await fetch('/like-post', {
                 method: 'POST',

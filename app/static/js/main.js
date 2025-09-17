@@ -32,6 +32,13 @@ function validateMobile(mobile) {
     return mobileRegex.test(mobile);
 }
 
+// Helper function to get cookie value
+function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
 // Initialize any global event listeners
 document.addEventListener('DOMContentLoaded', function() {
     // Add any global initialization here
