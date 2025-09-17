@@ -2,13 +2,22 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.deps import get_db
-from app.models import User, Profile
-from app.schemas import UserCreate, ProfileCreate
-from app.auth import get_password_hash
+try:
+    from app.deps import get_db
+    from app.models import User, Profile
+    from app.schemas import UserCreate, ProfileCreate
+    from app.auth import get_password_hash
+except ImportError:
+    from deps import get_db
+    from models import User, Profile
+    from schemas import UserCreate, ProfileCreate
+    from auth import get_password_hash
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
-from app.routers.taxonomy import COUNTRIES, STATES, CITIES
+try:
+    from app.routers.taxonomy import COUNTRIES, STATES, CITIES
+except ImportError:
+    from routers.taxonomy import COUNTRIES, STATES, CITIES
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

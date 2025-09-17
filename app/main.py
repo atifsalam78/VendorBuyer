@@ -9,7 +9,7 @@ from pathlib import Path
 import uvicorn
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import insert, update, delete
+from sqlalchemy import insert, update, delete, func
 
 # Import routers
 from app.routers import register, validate, taxonomy
@@ -441,7 +441,7 @@ async def like_post(
         return HTMLResponse(f"Error: {str(e)}", status_code=500)
 
 @app.get("/feed", response_class=HTMLResponse)
-async def feed(request: Request, db: AsyncSession = Depends(get_db), redis_cache: SimpleCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_db), redis_cache: SimpleCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get current user from session
     current_user = await get_current_user(request, db)
     
@@ -449,12 +449,28 @@ async def feed(request: Request, db: AsyncSession = Depends(get_db), redis_cache
         # Redirect to login page if no valid session
         return RedirectResponse(url="/", status_code=303)
     
-    # Fetch all public posts with user information, ordered by most recent
+    # Pagination settings
+    posts_per_page = 10
+    offset = (page - 1) * posts_per_page
+    
+    # Fetch total count of public posts
+    total_posts_result = await db.execute(
+        select(func.count()).select_from(Post)
+        .where(Post.visibility == "public")
+    )
+    total_posts = total_posts_result.scalar()
+    
+    # Calculate total pages
+    total_pages = (total_posts + posts_per_page - 1) // posts_per_page
+    
+    # Fetch paginated public posts with user information, ordered by most recent (use LEFT JOIN to include posts even if user doesn't exist)
     result = await db.execute(
         select(Post, User.email)
-        .join(User, Post.user_id == User.id)
+        .outerjoin(User, Post.user_id == User.id)
         .where(Post.visibility == "public")
         .order_by(Post.created_at.desc())
+        .limit(posts_per_page)
+        .offset(offset)
     )
     
     posts_with_users = result.all()
@@ -462,9 +478,14 @@ async def feed(request: Request, db: AsyncSession = Depends(get_db), redis_cache
     # Format the data for the template
     formatted_posts = []
     for post, user_email in posts_with_users:
-        # Load user profile information separately
-        user_name = user_email.split('@')[0]
-        user_profile_pic = None
+        # Handle case where user doesn't exist (user_email is None)
+        if user_email is None:
+            user_name = "[user deleted]"
+            user_profile_pic = None
+        else:
+            # Load user profile information separately
+            user_name = user_email.split('@')[0]
+            user_profile_pic = None
         
         # Query for the user's profile
         profile_result = await db.execute(
@@ -506,7 +527,14 @@ async def feed(request: Request, db: AsyncSession = Depends(get_db), redis_cache
             "request": request, 
             "posts": formatted_posts,
             "current_user_email": current_user.email,
-            "current_user_profile_pic": current_user_profile_pic
+            "current_user_profile_pic": current_user_profile_pic,
+            "current_page": page,
+            "total_pages": total_pages,
+            "total_posts": total_posts,
+            "has_next": page < total_pages,
+            "has_prev": page > 1,
+            "next_page": page + 1,
+            "prev_page": page - 1
         }
     )
 

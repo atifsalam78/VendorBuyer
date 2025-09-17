@@ -7,7 +7,10 @@ import secrets
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from app.models import User
+try:
+    from app.models import User
+except ImportError:
+    from models import User
 
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

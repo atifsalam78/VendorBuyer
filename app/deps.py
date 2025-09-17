@@ -2,8 +2,12 @@ from fastapi import Request, Depends
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
-from app.config import settings
-from app.models import Base, User, ProfileImage
+try:
+    from app.config import settings
+    from app.models import Base, User, ProfileImage
+except ImportError:
+    from config import settings
+    from models import Base, User, ProfileImage
 
 # Create async engine
 engine = create_async_engine(settings.DATABASE_URL, echo=True)

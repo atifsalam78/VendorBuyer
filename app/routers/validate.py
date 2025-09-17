@@ -1,7 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.deps import get_db
-from app.models import User
+try:
+    from app.deps import get_db
+    from app.models import User
+except ImportError:
+    from deps import get_db
+    from models import User
 from sqlalchemy.future import select
 from email_validator import validate_email, EmailNotValidError
 
