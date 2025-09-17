@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, Depends, Form, UploadFile, File
+from fastapi import FastAPI, Request, Depends, Form, UploadFile, File, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 import shutil
 import os
@@ -15,7 +15,7 @@ from sqlalchemy import insert, update, delete
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db, get_current_user_profile_pic
 from app.models import User, Profile, ProfileImage, Post, Like
-from app.auth import verify_password
+from app.auth import verify_password, create_session, SESSION_COOKIE_NAME, delete_session, get_current_user
 from app.redis_cache import get_redis_cache, RedisCache
 from app.rate_limiter import get_rate_limiter, RateLimiter
 
@@ -31,6 +31,23 @@ templates = Jinja2Templates(directory="app/templates")
 app.include_router(register.router, tags=["register"])
 app.include_router(validate.router, tags=["validate"])
 app.include_router(taxonomy.router, prefix="/taxonomy", tags=["taxonomy"])
+
+# Middleware to prevent caching of protected pages
+@app.middleware("http")
+async def add_cache_control_headers(request: Request, call_next):
+    response = await call_next(request)
+    
+    # List of protected routes that should not be cached
+    protected_routes = ["/feed", "/profile", "/about", "/plans"]
+    
+    # Check if the current path is a protected route
+    if any(request.url.path.startswith(route) for route in protected_routes):
+        # Add headers to prevent caching
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    
+    return response
 
 # Create uploads directory if it doesn't exist
 @app.on_event("startup")
@@ -53,7 +70,7 @@ async def index(request: Request, current_user_profile_pic: str = Depends(get_cu
     })
 
 @app.post("/login", response_class=HTMLResponse)
-async def login(request: Request, email: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
+async def login(request: Request, response: Response, email: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
     # Check if input is email or mobile
     is_email = '@' in email
     
@@ -74,31 +91,44 @@ async def login(request: Request, email: str = Form(...), password: str = Form(.
     # Get the actual email for the profile page
     user_email = user.email
     
-    # Create redirect response with user_email cookie
-    response = RedirectResponse(url=f"/profile?email={user_email}", status_code=303)
-    response.set_cookie(key="user_email", value=user_email, httponly=False, max_age=3600)  # 1 hour expiration, accessible to JavaScript
+    # Create session for the user
+    session_id = create_session(user_email)
+    
+    # Create redirect response with secure session cookie
+    response = RedirectResponse(url="/feed", status_code=303)
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=session_id,
+        httponly=True,  # Prevent JavaScript access for security
+        secure=True,    # Only send over HTTPS in production
+        samesite="lax", # CSRF protection
+        max_age=24 * 3600  # 24 hours expiration
+    )
     
     return response
 
 @app.get("/about", response_class=HTMLResponse)
-async def about(request: Request, current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+async def about(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+    # Get current user from session
+    current_user = await get_current_user(request, db)
+    
     return templates.TemplateResponse("about.html", {
         "request": request,
         "current_user_profile_pic": current_user_profile_pic,
-        "current_user_email": request.cookies.get("user_email")
+        "current_user_email": current_user.email if current_user else None
     })
 
 @app.get("/profile", response_class=HTMLResponse)
 async def profile(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
-    # Get email from session or query parameter (for testing)
-    email = request.query_params.get("email")
+    # Get current user from session
+    current_user = await get_current_user(request, db)
     
-    if not email:
-        # Redirect to login page if no email is provided
+    if not current_user:
+        # Redirect to login page if no valid session
         return RedirectResponse(url="/", status_code=303)
     
     # Query the database for the user
-    result = await db.execute(select(User).where(User.email == email))
+    result = await db.execute(select(User).where(User.email == current_user.email))
     user = result.scalars().first()
     
     if not user:
@@ -182,7 +212,7 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db), current_
         "request": request, 
         "user": user_data,
         "current_user_profile_pic": current_user_profile_pic,
-        "current_user_email": email
+        "current_user_email": current_user.email
     })
 
 @app.post("/upload-images", response_class=HTMLResponse)
@@ -429,6 +459,13 @@ async def like_post(
 
 @app.get("/feed", response_class=HTMLResponse)
 async def feed(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+    # Get current user from session
+    current_user = await get_current_user(request, db)
+    
+    if not current_user:
+        # Redirect to login page if no valid session
+        return RedirectResponse(url="/", status_code=303)
+    
     # Fetch all public posts with user information, ordered by most recent
     result = await db.execute(
         select(Post, User.email)
@@ -481,18 +518,36 @@ async def feed(request: Request, db: AsyncSession = Depends(get_db), current_use
         {
             "request": request, 
             "posts": formatted_posts,
-            "current_user_email": request.cookies.get("user_email"),
+            "current_user_email": current_user.email,
             "current_user_profile_pic": current_user_profile_pic
         }
     )
 
 @app.get("/plans", response_class=HTMLResponse)
-async def plans(request: Request, current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+async def plans(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+    # Get current user from session
+    current_user = await get_current_user(request, db)
+    
     return templates.TemplateResponse("plans.html", {
         "request": request,
         "current_user_profile_pic": current_user_profile_pic,
-        "current_user_email": request.cookies.get("user_email")
+        "current_user_email": current_user.email if current_user else None
     })
+
+@app.get("/logout", response_class=HTMLResponse)
+async def logout(request: Request, response: Response):
+    # Get session ID from cookie
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    
+    # Delete the session if it exists
+    if session_id:
+        delete_session(session_id)
+    
+    # Create redirect response that clears the session cookie
+    response = RedirectResponse(url="/", status_code=303)
+    response.delete_cookie(SESSION_COOKIE_NAME)
+    
+    return response
 
 @app.get("/register", response_class=HTMLResponse)
 async def register(request: Request):

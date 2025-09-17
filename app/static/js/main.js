@@ -37,29 +37,35 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add any global initialization here
     console.log('BazaarHub application initialized');
     
-    // Multiple initialization attempts to work around profile page conflicts
-    let attempts = 0;
-    const maxAttempts = 5;
-    
-    function tryInitialize() {
-        attempts++;
-        console.log(`Profile dropdown initialization attempt ${attempts}/${maxAttempts}`);
+    // Only initialize profile dropdown if the dropdown container exists
+    const dropdownContainer = document.querySelector('.profile-dropdown');
+    if (dropdownContainer) {
+        // Multiple initialization attempts to work around profile page conflicts
+        let attempts = 0;
+        const maxAttempts = 5;
         
-        try {
-            initializeProfileDropdown();
-            console.log('Profile dropdown initialized successfully');
-        } catch (error) {
-            console.error('Profile dropdown initialization failed:', error);
+        function tryInitialize() {
+            attempts++;
+            console.log(`Profile dropdown initialization attempt ${attempts}/${maxAttempts}`);
             
-            if (attempts < maxAttempts) {
-                // Try again with increasing delays
-                setTimeout(tryInitialize, attempts * 200);
+            try {
+                initializeProfileDropdown();
+                console.log('Profile dropdown initialized successfully');
+            } catch (error) {
+                console.error('Profile dropdown initialization failed:', error);
+                
+                if (attempts < maxAttempts) {
+                    // Try again with increasing delays
+                    setTimeout(tryInitialize, attempts * 200);
+                }
             }
         }
+        
+        // Start initialization attempts
+        setTimeout(tryInitialize, 100);
+    } else {
+        console.log('Profile dropdown container not found - skipping initialization');
     }
-    
-    // Start initialization attempts
-    setTimeout(tryInitialize, 100);
 });
 
 // Profile dropdown functionality
@@ -176,15 +182,29 @@ function hideDropdown() {
 }
 
 function performLogout() {
-    // Clear any user session data (cookies, local storage, etc.)
-    document.cookie = 'user_email=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    document.cookie = 'user_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-    
-    // Show logout success message
-    showToast('You have been logged out successfully', 'success');
-    
-    // Redirect to home page after a short delay
-    setTimeout(() => {
-        window.location.href = '/';
-    }, 1500);
+    // Call server-side logout endpoint to properly delete session
+    fetch('/logout', {
+        method: 'GET',
+        credentials: 'same-origin' // Include cookies in the request
+    })
+    .then(response => {
+        if (response.ok) {
+            // Clear the session cookie client-side as well
+            document.cookie = 'session_id=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+            
+            // Show logout success message
+            showToast('You have been logged out successfully', 'success');
+            
+            // Redirect to home page after a short delay
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 1500);
+        } else {
+            showToast('Logout failed. Please try again.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Logout error:', error);
+        showToast('Logout failed. Please try again.', 'error');
+    });
 }

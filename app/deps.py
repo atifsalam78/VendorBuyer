@@ -28,7 +28,14 @@ async def get_db():
 
 # Dependency to get current user profile picture
 async def get_current_user_profile_pic(request: Request, db: AsyncSession = Depends(get_db)):
-    user_email = request.cookies.get("user_email")
+    # Import session functions
+    from app.auth import validate_session, SESSION_COOKIE_NAME
+    
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
+    if not session_id:
+        return None
+    
+    user_email = validate_session(session_id)
     if not user_email:
         return None
     
