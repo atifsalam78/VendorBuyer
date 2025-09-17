@@ -141,13 +141,35 @@
 
 {% block scripts %}
 <script>
-// Like functionality for posts with AJAX
+// Like functionality for posts with AJAX - Optimistic UI updates
 const likeButtons = document.querySelectorAll('.post-action:first-child');
 likeButtons.forEach(button => {
     button.addEventListener('click', async function() {
         const icon = this.querySelector('i');
         const postId = this.closest('.post-card').dataset.postId;
         const isLiked = icon.classList.contains('fas');
+        const likesCountElement = this.closest('.post-card').querySelector('[class*="fa-heart"]').parentNode;
+        
+        // Get current likes count
+        const currentLikes = parseInt(likesCountElement.textContent.split(' ')[0]) || 0;
+        
+        // Optimistic UI update - update immediately
+        if (isLiked) {
+            // Unlike action
+            icon.classList.remove('fas');
+            icon.classList.add('far');
+            this.querySelector('.me-1').nextSibling.textContent = 'Like';
+            likesCountElement.textContent = (currentLikes - 1) + ' likes';
+        } else {
+            // Like action
+            icon.classList.remove('far');
+            icon.classList.add('fas');
+            this.querySelector('.me-1').nextSibling.textContent = 'Liked';
+            likesCountElement.textContent = (currentLikes + 1) + ' likes';
+        }
+        
+        // Disable button during request to prevent double clicks
+        this.disabled = true;
         
         try {
             // Create form data for the like-post endpoint
@@ -157,23 +179,15 @@ likeButtons.forEach(button => {
             
             // Get current user email from the page or cookie
             const currentUserEmail = '{{ current_user_email }}' || getCookie('user_email');
-            console.log('Current user email:', currentUserEmail);
-            console.log('Template email:', '{{ current_user_email }}');
-            console.log('Cookie email:', getCookie('user_email'));
-            console.log('All cookies:', document.cookie);
-            console.log('Post ID:', postId);
-            console.log('Action:', isLiked ? 'unlike' : 'like');
             
             if (!currentUserEmail) {
                 alert('Please log in to like posts');
+                // Revert optimistic update
+                revertOptimisticUpdate(icon, this, likesCountElement, currentLikes, isLiked);
+                this.disabled = false;
                 return;
             }
             formData.append('email', currentUserEmail);
-            
-            // Log form data for debugging
-            for (let [key, value] of formData.entries()) {
-                console.log(`FormData: ${key} = ${value}`);
-            }
             
             const response = await fetch('/like-post', {
                 method: 'POST',
@@ -182,33 +196,44 @@ likeButtons.forEach(button => {
             
             if (response.ok) {
                 const updatedLikes = await response.text();
-                
-                if (isLiked) {
-                    icon.classList.remove('fas');
-                    icon.classList.add('far');
-                    this.querySelector('.me-1').nextSibling.textContent = 'Like';
-                } else {
-                    icon.classList.remove('far');
-                    icon.classList.add('fas');
-                    this.querySelector('.me-1').nextSibling.textContent = 'Liked';
-                }
-                
-                // Update likes count display
-                const likesCountElement = this.closest('.post-card').querySelector('[class*="fa-heart"]').parentNode;
+                // Update with actual count from server
                 likesCountElement.textContent = updatedLikes + ' likes';
                 
             } else {
                 const errorText = await response.text();
                 console.error('Failed to update like status:', errorText);
+                // Revert optimistic update on error
+                revertOptimisticUpdate(icon, this, likesCountElement, currentLikes, isLiked);
+                
                 if (response.status === 429) {
                     alert('Rate limit exceeded. Please try again later.');
                 }
             }
         } catch (error) {
             console.error('Error:', error);
+            // Revert optimistic update on network error
+            revertOptimisticUpdate(icon, this, likesCountElement, currentLikes, isLiked);
+        } finally {
+            this.disabled = false;
         }
     });
 });
+
+// Helper function to revert optimistic UI updates
+function revertOptimisticUpdate(icon, button, likesCountElement, originalLikes, wasLiked) {
+    if (wasLiked) {
+        // Revert to liked state
+        icon.classList.remove('far');
+        icon.classList.add('fas');
+        button.querySelector('.me-1').nextSibling.textContent = 'Liked';
+    } else {
+        // Revert to unliked state
+        icon.classList.remove('fas');
+        icon.classList.add('far');
+        button.querySelector('.me-1').nextSibling.textContent = 'Like';
+    }
+    likesCountElement.textContent = originalLikes + ' likes';
+}
 
 // Helper function to get cookie value
 function getCookie(name) {

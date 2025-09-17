@@ -119,7 +119,7 @@ async def about(request: Request, db: AsyncSession = Depends(get_db), current_us
     })
 
 @app.get("/profile", response_class=HTMLResponse)
-async def profile(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+async def profile(request: Request, db: AsyncSession = Depends(get_db), redis_cache: RedisCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get current user from session
     current_user = await get_current_user(request, db)
     
@@ -198,7 +198,7 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db), current_
                 "content": post.content,
                 "image_url": post.image_url,
                 "visibility": post.visibility,
-                "likes_count": post.likes_count,
+                "likes_count": await redis_cache.get_likes_count(post.id) or post.likes_count,
                 "comments_count": post.comments_count,
                 "shares_count": post.shares_count,
                 "created_at": post.created_at,
@@ -361,18 +361,18 @@ async def like_post(
         # Debug logging
         print(f"Like request - email: {email}, post_id: {post_id}, action: {action}")
         
-        # Verify user exists
-        user_result = await db.execute(select(User).where(User.email == email))
-        user = user_result.scalars().first()
+        # Get user and post in a single query using joins to reduce round trips
+        result = await db.execute(
+            select(User, Post)
+            .join(Post, Post.id == post_id)
+            .where(User.email == email)
+        )
+        user_post = result.first()
         
-        # Verify post exists
-        post_result = await db.execute(select(Post).where(Post.id == post_id))
-        post = post_result.scalars().first()
-        
-        print(f"User found: {user is not None}, Post found: {post is not None}")
-        
-        if not user or not post:
+        if not user_post:
             return HTMLResponse("User or post not found", status_code=404)
+        
+        user, post = user_post
         
         # Apply rate limiting for like actions only
         if action == "like":
@@ -383,82 +383,55 @@ async def like_post(
             # Increment rate limit counter
             await rate_limiter.increment_rate_limit(user.id, "like")
             
-            # Check if like already exists first
+            # Check if like already exists and handle like/unlike in single transaction
             existing_like_result = await db.execute(
                 select(Like).where(Like.user_id == user.id, Like.post_id == post_id)
             )
             existing_like = existing_like_result.scalars().first()
-            print(f"Existing like found: {existing_like is not None}")
             
             if existing_like:
                 # User already liked this post
-                print("User already liked this post")
                 return HTMLResponse("Already liked", status_code=200)
             
-            # Insert new like
+            # Insert new like and update count in single operation
             new_like = Like(user_id=user.id, post_id=post_id)
             db.add(new_like)
             
-            # Update likes count
-            await db.execute(
-                update(Post)
-                .where(Post.id == post_id)
-                .values(likes_count=Post.likes_count + 1)
-            )
-            
-            # Update Redis cache
-            await redis_cache.increment_likes_count(post_id)
-            
-            print("Like successfully added")
+            # Update likes count directly
+            post.likes_count += 1
                 
         elif action == "unlike":
-            # Use atomic DELETE and update in single transaction
+            # Delete like and update count in single operation
             delete_result = await db.execute(
                 delete(Like)
                 .where(Like.user_id == user.id, Like.post_id == post_id)
-                .returning(Like.id)
             )
             
             if delete_result.rowcount > 0:
                 # Only update count if a like was actually removed
-                await db.execute(
-                    update(Post)
-                    .where(Post.id == post_id)
-                    .values(likes_count=Post.likes_count - 1)
-                )
-                
-                # Update Redis cache
-                await redis_cache.decrement_likes_count(post_id)
+                post.likes_count -= 1
         
         await db.commit()
         
-        # Refresh the post object to get the updated likes_count
+        # Force refresh the post object to get the latest count from database
         await db.refresh(post)
         
-        # Debug: Check if the post was actually updated
-        result = await db.execute(select(Post.likes_count).where(Post.id == post_id))
-        db_likes_count = result.scalar()
-        print(f"After commit - Post ID {post_id} likes count in DB: {db_likes_count}")
-        print(f"Post object likes_count: {post.likes_count}")
+        # Update Redis cache with the exact database value to ensure consistency
+        await redis_cache.set_likes_count(post_id, post.likes_count)
         
-        # Get updated likes count - try cache first, then database
-        cached_count = await redis_cache.get_likes_count(post_id)
-        if cached_count is not None:
-            updated_likes = cached_count
-        else:
-            updated_likes = post.likes_count
-            # Cache the result
-            await redis_cache.set_likes_count(post_id, updated_likes)
+        # Debug: Check what's actually in the cache
+        cached_value = await redis_cache.get_likes_count(post_id)
+        print(f"Database likes count: {post.likes_count}, Cached value: {cached_value}")
         
-        print(f"Returning likes count: {updated_likes}")
-        return HTMLResponse(str(updated_likes), status_code=200)
+        print(f"Returning likes count: {post.likes_count}")
+        return HTMLResponse(str(post.likes_count), status_code=200)
         
     except Exception as e:
         await db.rollback()
         return HTMLResponse(f"Error: {str(e)}", status_code=500)
 
 @app.get("/feed", response_class=HTMLResponse)
-async def feed(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
+async def feed(request: Request, db: AsyncSession = Depends(get_db), redis_cache: RedisCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get current user from session
     current_user = await get_current_user(request, db)
     
@@ -499,12 +472,16 @@ async def feed(request: Request, db: AsyncSession = Depends(get_db), current_use
             if profile_image:
                 user_profile_pic = profile_image.profile_pic
         
+        # Get likes count from Redis cache first, fallback to database
+        cached_likes = await redis_cache.get_likes_count(post.id)
+        likes_count = cached_likes if cached_likes is not None else post.likes_count
+        
         formatted_posts.append({
             "id": post.id,
             "content": post.content,
             "image_url": post.image_url,
             "visibility": post.visibility,
-            "likes_count": post.likes_count,
+            "likes_count": likes_count,
             "comments_count": post.comments_count,
             "shares_count": post.shares_count,
             "created_at": post.created_at,
