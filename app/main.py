@@ -18,8 +18,25 @@ from app.models import User, Profile, ProfileImage, Post, Like
 from app.auth import verify_password, create_session, SESSION_COOKIE_NAME, delete_session, get_current_user
 from app.redis_cache import get_redis_cache, SimpleCache
 from app.rate_limiter import get_rate_limiter, RateLimiter
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="BazaarHub")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    # Create uploads directory if it doesn't exist
+    upload_dir = Path("app/static/uploads")
+    if not upload_dir.exists():
+        upload_dir.mkdir(parents=True)
+    
+    # Initialize database
+    await init_db()
+    
+    yield
+    
+    # Shutdown logic (if needed)
+    pass
+
+app = FastAPI(title="BazaarHub", lifespan=lifespan)
 
 # Mount static files
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -49,17 +66,7 @@ async def add_cache_control_headers(request: Request, call_next):
     
     return response
 
-# Create uploads directory if it doesn't exist
-@app.on_event("startup")
-async def create_upload_directory():
-    upload_dir = Path("app/static/uploads")
-    if not upload_dir.exists():
-        upload_dir.mkdir(parents=True)
 
-# Initialize database on startup
-@app.on_event("startup")
-async def startup_db_client():
-    await init_db()
 
 # Routes
 @app.get("/", response_class=HTMLResponse)
