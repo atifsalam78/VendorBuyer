@@ -14,7 +14,7 @@ from sqlalchemy import insert, update, delete, func
 # Import routers
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db, get_current_user_profile_pic
-from app.models import User, Profile, ProfileImage, Post, Like
+from app.models import User, Profile, ProfileImage, Post, Like, Comment
 from app.auth import verify_password, create_session, SESSION_COOKIE_NAME, delete_session, get_current_user
 from app.redis_cache import get_redis_cache, SimpleCache
 from app.rate_limiter import get_rate_limiter, RateLimiter
@@ -308,6 +308,113 @@ async def update_profile(request: Request, email: str = Form(...), tagline: str 
     
     # Redirect back to profile page
     return RedirectResponse(url=f"/profile?email={email}", status_code=303)
+
+# Comment endpoints
+@app.post("/create-comment", response_class=HTMLResponse)
+async def create_comment(
+    request: Request,
+    email: str = Form(...),
+    post_id: int = Form(...),
+    content: str = Form(...),
+    db: AsyncSession = Depends(get_db)
+):
+    # Verify user exists
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalars().first()
+    
+    if not user:
+        return RedirectResponse(url="/", status_code=303)
+    
+    # Verify post exists
+    post_result = await db.execute(select(Post).where(Post.id == post_id))
+    post = post_result.scalars().first()
+    
+    if not post:
+        return RedirectResponse(url="/feed", status_code=303)
+    
+    # Create new comment
+    new_comment = Comment(
+        user_id=user.id,
+        post_id=post_id,
+        content=content
+    )
+    
+    db.add(new_comment)
+    
+    # Update post comments count
+    post.comments_count = post.comments_count + 1
+    
+    await db.commit()
+    await db.refresh(new_comment)
+    
+    # Redirect back to the page where the comment was made
+    referer = request.headers.get("referer", "/feed")
+    return RedirectResponse(url=referer, status_code=303)
+
+@app.get("/test-comments/{post_id}", response_class=HTMLResponse)
+async def test_comments(
+    request: Request,
+    post_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    """Simple test endpoint to check if comments functionality works"""
+    try:
+        print(f"Testing comments for post {post_id}")
+        
+        # Simple test - just return a basic response
+        return HTMLResponse(f"Test successful for post {post_id}")
+    except Exception as e:
+        print(f"Error in test_comments: {str(e)}")
+        return HTMLResponse(f"Test error: {str(e)}", status_code=500)
+
+@app.get("/comments/{post_id}", response_class=HTMLResponse)
+async def get_comments(
+    request: Request,
+    post_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    try:
+        # First, let's test if we can connect to the database
+        print(f"Getting comments for post {post_id}")
+        
+        # Get comments for the post with user information
+        result = await db.execute(
+            select(Comment, User.email)
+            .join(User, Comment.user_id == User.id)
+            .where(Comment.post_id == post_id)
+            .order_by(Comment.created_at.asc())
+        )
+        
+        comments_with_users = result.all()
+        print(f"Found {len(comments_with_users)} comments")
+        
+        # Format comments for response
+        formatted_comments = []
+        for comment, user_email in comments_with_users:
+            formatted_comments.append({
+                "id": comment.id,
+                "content": comment.content,
+                "created_at": comment.created_at,
+                "user_email": user_email,
+                "user_name": user_email.split('@')[0] if user_email else "[user deleted]"
+            })
+        
+        # Test with simple response first
+        if not formatted_comments:
+            return HTMLResponse("No comments found for this post")
+        
+        return templates.TemplateResponse(
+            "comments_partial.html", 
+            {
+                "request": request, 
+                "comments": formatted_comments,
+                "post_id": post_id
+            }
+        )
+    except Exception as e:
+        # Return a simple error message for debugging
+        print(f"Error in get_comments: {str(e)}")
+        return HTMLResponse(f"Error loading comments: {str(e)}", status_code=500)
 
 @app.post("/create-post", response_class=HTMLResponse)
 async def create_post(

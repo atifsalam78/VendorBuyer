@@ -1,0 +1,20 @@
+{% if comments %}
+<div class="comments-section">
+    <h4>Comments ({{ comments|length }})</h4>
+    {% for comment in comments %}
+    <div class="comment" id="comment-{{ comment.id }}">
+        <div class="comment-header">
+            <strong>{{ comment.user_name }}</strong>
+            <span class="comment-time">{{ comment.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+        </div>
+        <div class="comment-content">
+            {{ comment.content }}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="comments-section">
+    <p>No comments yet. Be the first to comment!</p>
+</div>
+{% endif %}

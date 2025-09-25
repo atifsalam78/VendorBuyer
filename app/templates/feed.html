@@ -73,12 +73,48 @@
                                 <button class="post-action btn btn-link text-decoration-none text-muted">
                                     <i class="far fa-thumbs-up me-1"></i>Like
                                 </button>
-                                <button class="post-action btn btn-link text-decoration-none text-muted">
+                                <button class="post-action btn btn-link text-decoration-none text-muted" onclick="toggleComments('{{ post.id }}')">
                                     <i class="far fa-comment me-1"></i>Comment
                                 </button>
                                 <button class="post-action btn btn-link text-decoration-none text-muted">
                                     <i class="far fa-share-square me-1"></i>Share
                                 </button>
+                            </div>
+
+                            <!-- Comments Section -->
+                            <div class="comments-container mt-3" id="comments-{{ post.id }}">
+                                <!-- Comments will be loaded here via AJAX -->
+                                <div class="comments-loading text-center py-3" style="display: none;">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading comments...</span>
+                                    </div>
+                                    <span class="ms-2 text-muted">Loading comments...</span>
+                                </div>
+                                
+                                <!-- Comment Form -->
+                                {% if current_user_email %}
+                                <form class="comment-form mt-3" id="comment-form-{{ post.id }}" onsubmit="submitComment(event, '{{ post.id }}')">
+                                    <div class="input-group">
+                                        <input type="hidden" name="email" value="{{ current_user_email }}">
+                                        <input type="hidden" name="post_id" value="{{ post.id }}">
+                                        <textarea 
+                                               name="content" 
+                                               class="form-control" 
+                                               placeholder="Write a comment..." 
+                                               required
+                                               maxlength="500"
+                                               rows="2"
+                                               style="resize: vertical; min-height: 38px;"></textarea>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-paper-plane"></i>
+                                        </button>
+                                    </div>
+                                </form>
+                                {% else %}
+                                <div class="alert alert-info mt-3">
+                                    <a href="/" class="alert-link">Sign in</a> to leave a comment
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -278,6 +314,129 @@ function getCookie(name) {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
     if (parts.length === 2) return parts.pop().split(';').shift();
+}
+
+// Comment functionality
+async function toggleComments(postId) {
+    const commentsContainer = document.getElementById(`comments-${postId}`);
+    const commentsContent = commentsContainer.querySelector('.comments-loading');
+    
+    if (commentsContainer.style.display === 'none') {
+        // Show comments and load them
+        commentsContainer.style.display = 'block';
+        
+        try {
+            const response = await fetch(`/comments/${postId}`);
+            if (response.ok) {
+                const commentsHtml = await response.text();
+                commentsContainer.innerHTML = commentsHtml;
+                
+                // Rebuild the comment form since it was replaced by the loaded HTML
+                const formHtml = `
+                <form class="comment-form mt-3" id="comment-form-${postId}" onsubmit="submitComment(event, '${postId}')">
+                    <div class="input-group">
+                        <input type="hidden" name="email" value="{{ current_user_email }}">
+                        <input type="hidden" name="post_id" value="${postId}">
+                        <textarea 
+                            name="content" 
+                            class="form-control" 
+                            placeholder="Write a comment..." 
+                            required
+                            maxlength="500"
+                            rows="2"
+                            style="resize: vertical; min-height: 38px;"></textarea>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </form>`;
+                
+                // Add the form back to the container if user is logged in
+                if ("{{ current_user_email }}") {
+                    commentsContainer.insertAdjacentHTML('beforeend', formHtml);
+                    
+                    // Auto-focus on comment textarea field after comments are loaded
+                    setTimeout(() => {
+                        const commentInput = commentsContainer.querySelector('textarea[name="content"]');
+                        if (commentInput) {
+                            commentInput.focus();
+                        }
+                    }, 100);
+                } else {
+                    // Add login message if user is not logged in
+                    commentsContainer.insertAdjacentHTML('beforeend', `
+                        <div class="alert alert-info mt-3">
+                            <a href="/" class="alert-link">Sign in</a> to leave a comment
+                        </div>
+                    `);
+                }
+            } else {
+                commentsContainer.innerHTML = '<div class="alert alert-danger">Failed to load comments</div>';
+            }
+        } catch (error) {
+            console.error('Error loading comments:', error);
+            commentsContainer.innerHTML = '<div class="alert alert-danger">Error loading comments</div>';
+        }
+    } else {
+        // Hide comments
+        commentsContainer.style.display = 'none';
+    }
+}
+
+async function submitComment(event, postId) {
+    event.preventDefault();
+    
+    const form = event.target;
+    const formData = new FormData(form);
+    const submitButton = form.querySelector('button[type="submit"]');
+    const commentInput = form.querySelector('textarea[name="content"]');
+    
+    // Disable form during submission
+    submitButton.disabled = true;
+    submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    try {
+        const response = await fetch('/create-comment', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (response.ok) {
+            // Clear the comment input
+            commentInput.value = '';
+            
+            // Reload comments to show the new one
+            await loadComments(postId);
+        } else {
+            const errorText = await response.text();
+            console.error('Failed to post comment:', errorText);
+            alert('Error posting comment. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        alert('Error posting comment. Please try again.');
+    } finally {
+        // Re-enable form
+        submitButton.disabled = false;
+        submitButton.innerHTML = '<i class="fas fa-paper-plane"></i>';
+    }
+}
+
+async function loadComments(postId) {
+    const commentsContainer = document.getElementById(`comments-${postId}`);
+    
+    try {
+        const response = await fetch(`/comments/${postId}`);
+        if (response.ok) {
+            const commentsHtml = await response.text();
+            commentsContainer.innerHTML = commentsHtml;
+        } else {
+            commentsContainer.innerHTML = '<div class="alert alert-danger">Failed to load comments</div>';
+        }
+    } catch (error) {
+        console.error('Error loading comments:', error);
+        commentsContainer.innerHTML = '<div class="alert alert-danger">Error loading comments</div>';
+    }
 }
 </script>
 {% endblock %}

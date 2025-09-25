@@ -110,3 +110,23 @@ class Post(Base):
         Index('ix_posts_user_created', 'user_id', 'created_at'),  # For user-specific feeds
         Index('ix_posts_visibility', 'visibility'),  # For visibility filtering
     )
+
+class Comment(Base):
+    __tablename__ = "comments"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    post_id = Column(Integer, ForeignKey("posts.id"), index=True)
+    content = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=func.now())
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    post = relationship("Post")
+    
+    # Add indexes for optimization
+    __table_args__ = (
+        Index('ix_comments_post_created', 'post_id', 'created_at'),  # For sorting comments by post
+        Index('ix_comments_user_created', 'user_id', 'created_at'),  # For user comment history
+    )
