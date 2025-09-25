@@ -9,11 +9,13 @@ from pathlib import Path
 import uvicorn
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import update
 from sqlalchemy import insert, update, delete, func
 
 # Import routers
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db, get_current_user_profile_pic
+from sqlalchemy import func
 from app.models import User, Profile, ProfileImage, Post, Like, Comment
 from app.auth import verify_password, create_session, SESSION_COOKIE_NAME, delete_session, get_current_user
 from app.redis_cache import get_redis_cache, SimpleCache
@@ -309,6 +311,24 @@ async def update_profile(request: Request, email: str = Form(...), tagline: str 
     # Redirect back to profile page
     return RedirectResponse(url=f"/profile?email={email}", status_code=303)
 
+# Helper function to update post comments count
+async def update_post_comments_count(db: AsyncSession, post_id: int) -> int:
+    """Update the comments_count for a post based on actual comment count in the database"""
+    # Count actual comments for the post
+    result = await db.execute(
+        select(func.count(Comment.id)).where(Comment.post_id == post_id)
+    )
+    actual_count = result.scalar()
+    
+    # Update the post with the actual count
+    await db.execute(
+        update(Post)
+        .where(Post.id == post_id)
+        .values(comments_count=actual_count)
+    )
+    
+    return actual_count
+
 # Comment endpoints
 @app.post("/create-comment", response_class=HTMLResponse)
 async def create_comment(
@@ -340,16 +360,34 @@ async def create_comment(
     )
     
     db.add(new_comment)
-    
-    # Update post comments count
-    post.comments_count = post.comments_count + 1
-    
     await db.commit()
     await db.refresh(new_comment)
+    
+    # Update post comments count with actual count
+    await update_post_comments_count(db, post_id)
     
     # Redirect back to the page where the comment was made
     referer = request.headers.get("referer", "/feed")
     return RedirectResponse(url=referer, status_code=303)
+
+@app.get("/admin/update-all-comment-counts", response_class=HTMLResponse)
+async def update_all_comment_counts(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    # Get all posts
+    result = await db.execute(select(Post))
+    posts = result.scalars().all()
+    
+    updated_count = 0
+    for post in posts:
+        # Update each post's comment count
+        actual_count = await update_post_comments_count(db, post.id)
+        updated_count += 1
+    
+    await db.commit()
+    
+    return HTMLResponse(f"Updated comment counts for {updated_count} posts.")
 
 @app.get("/test-comments/{post_id}", response_class=HTMLResponse)
 async def test_comments(
