@@ -425,17 +425,62 @@ async function submitComment(event, postId) {
 async function loadComments(postId) {
     const commentsContainer = document.getElementById(`comments-${postId}`);
     
+    // Save the comment form before replacing the container content
+    const commentForm = commentsContainer.querySelector('.comment-form');
+    
     try {
         const response = await fetch(`/comments/${postId}`);
         if (response.ok) {
             const commentsHtml = await response.text();
             commentsContainer.innerHTML = commentsHtml;
+            
+            // Rebuild the comment form since it was replaced by the loaded HTML
+            const formHtml = `
+            <form class="comment-form mt-3" id="comment-form-${postId}" onsubmit="submitComment(event, '${postId}')">
+                <div class="input-group">
+                    <input type="hidden" name="email" value="{{ current_user_email }}">
+                    <input type="hidden" name="post_id" value="${postId}">
+                    <textarea 
+                        name="content" 
+                        class="form-control" 
+                        placeholder="Write a comment..." 
+                        required
+                        maxlength="500"
+                        rows="2"
+                        style="resize: vertical; min-height: 38px;"></textarea>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </form>`;
+            
+            // Add the form back to the container if user is logged in
+            if ("{{ current_user_email }}") {
+                commentsContainer.insertAdjacentHTML('beforeend', formHtml);
+            } else {
+                // Add login message if user is not logged in
+                commentsContainer.insertAdjacentHTML('beforeend', `
+                    <div class="alert alert-info mt-3">
+                        <a href="/" class="alert-link">Sign in</a> to leave a comment
+                    </div>
+                `);
+            }
         } else {
             commentsContainer.innerHTML = '<div class="alert alert-danger">Failed to load comments</div>';
+            
+            // Restore the comment form if it existed
+            if (commentForm && "{{ current_user_email }}") {
+                commentsContainer.appendChild(commentForm);
+            }
         }
     } catch (error) {
         console.error('Error loading comments:', error);
         commentsContainer.innerHTML = '<div class="alert alert-danger">Error loading comments</div>';
+        
+        // Restore the comment form if it existed
+        if (commentForm && "{{ current_user_email }}") {
+            commentsContainer.appendChild(commentForm);
+        }
     }
 }
 </script>
