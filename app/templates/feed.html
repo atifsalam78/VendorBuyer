@@ -83,7 +83,26 @@
                                         </div>
                                     </div>
                                 </span>
-                                <span><i class="fas fa-comment me-1"></i>{{ post.comments_count }} comments</span>
+                                <span class="comments-count-container" data-post-id="{{ post.id }}">
+                                    <i class="fas fa-comment me-1"></i>
+                                    <span class="comments-count">{{ post.comments_count }} comments</span>
+                                    <!-- Comments popup will be inserted here -->
+                                    <div class="comments-popup" style="display: none;">
+                                        <div class="comments-popup-header">
+                                            <strong>Commented by</strong>
+                                            <button type="button" class="btn-close btn-sm close-comments-popup"></button>
+                                        </div>
+                                        <div class="comments-popup-content">
+                                            <div class="comments-loading">
+                                                <div class="spinner-border spinner-border-sm" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <span class="ms-2">Loading...</span>
+                                            </div>
+                                            <div class="comments-list"></div>
+                                        </div>
+                                    </div>
+                                </span>
                                 <span><i class="fas fa-share me-1"></i>{{ post.shares_count }} shares</span>
                             </div>
 
@@ -223,12 +242,12 @@
 }
 
 /* Likes popup styling */
-.likes-count-container {
+.likes-count-container, .comments-count-container {
     position: relative;
     cursor: pointer;
 }
 
-.likes-popup {
+.likes-popup, .comments-popup {
     position: absolute;
     top: 100%;
     left: 0;
@@ -239,9 +258,10 @@
     z-index: 1000;
     overflow: hidden;
     max-height: 300px;
+    margin-top: 5px;
 }
 
-.likes-popup-header {
+.likes-popup-header, .comments-popup-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -250,11 +270,29 @@
     background-color: #f8f9fa;
 }
 
-.likes-popup-content {
+/* .comments-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    background-color: #e9ecef;
+    border-bottom: 1px solid #ced4da;
+    color: #495057;
+    font-weight: 500;
+} */
+
+.likes-popup-content, .comments-popup-content {
     padding: 10px;
     max-height: 250px;
     overflow-y: auto;
 }
+
+/* .comments-popup-content {
+    padding: 10px;
+    overflow-y: auto;
+    max-height: 300px;
+    background-color: #f8f9fa;
+} */
 
 .likes-loading {
     display: flex;
@@ -269,32 +307,51 @@
     gap: 10px;
 }
 
-.like-user {
+.like-user, .comment-user {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 5px;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
 }
 
-.like-user-avatar {
+.like-user:last-child, .comment-user:last-child {
+    border-bottom: none;
+}
+
+.like-user-avatar, .comment-user-avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
-    background-color: #4A6CF7;
-    color: white;
+    background-color: #e9ecef;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 12px;
-}
-
-.like-user-name {
-    font-weight: 500;
-}
-
-.like-user-email {
+    margin-right: 10px;
     font-size: 12px;
     color: #6c757d;
+    overflow: hidden;
+}
+
+.like-user-avatar img, .comment-user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.like-user-info, .comment-user-info {
+    flex: 1;
+}
+
+.like-user-name, .comment-user-name {
+    font-weight: 500;
+    font-size: 14px;
+}
+
+.comment-text {
+    font-size: 13px;
+    color: #6c757d;
+    margin-top: 2px;
+    word-break: break-word;
 }
 </style>
 
@@ -302,89 +359,100 @@
 
 {% block scripts %}
 <script>
-// Likes popup functionality
+// Likes and Comments popup functionality
 document.addEventListener('DOMContentLoaded', function() {
-    const likesContainers = document.querySelectorAll('.likes-count-container');
-    
-    likesContainers.forEach(container => {
-        const postId = container.dataset.postId;
-        const likesPopup = container.querySelector('.likes-popup');
-        const likesList = container.querySelector('.likes-list');
-        const likesLoading = container.querySelector('.likes-loading');
-        const closeBtn = container.querySelector('.close-likes-popup');
+    // Function to initialize popup functionality for likes and comments
+    function initPopupFunctionality(containerSelector, popupSelector, closeBtnSelector, listSelector, loadingSelector, type) {
+        const containers = document.querySelectorAll(containerSelector);
         
-        // Show popup on hover
-        container.addEventListener('mouseenter', async function() {
-            // Only fetch data if likes count > 0
-            const likesCount = parseInt(container.querySelector('.likes-count').textContent);
-            if (likesCount > 0) {
-                likesPopup.style.display = 'block';
-                
-                // Show loading state
-                likesLoading.style.display = 'flex';
-                likesList.style.display = 'none';
-                
-                try {
-                    // Fetch users who liked the post
-                    const response = await fetch(`/api/posts/${postId}/likes`);
-                    if (response.ok) {
-                        const data = await response.json();
-                        
-                        // Clear previous content
-                        likesList.innerHTML = '';
-                        
-                        // Add users to the list
-                        if (data.users && data.users.length > 0) {
-                            data.users.forEach(user => {
-                                const userElement = document.createElement('div');
-                                userElement.className = 'like-user';
-                                
-                                let avatarContent = '';
-                                if (user.profile_pic) {
-                                    avatarContent = `<img src="${user.profile_pic}" alt="${user.name}" class="like-user-avatar">`;
-                                } else {
-                                    avatarContent = `<div class="like-user-avatar">${user.name.substring(0, 2).toUpperCase()}</div>`;
-                                }
-                                
-                                userElement.innerHTML = `
-                                    ${avatarContent}
-                                    <div class="like-user-info">
-                                        <div class="like-user-name">${user.name}</div>
-                                    </div>
-                                `;
-                                
-                                likesList.appendChild(userElement);
-                            });
-                        } else {
-                            likesList.innerHTML = '<div class="text-center py-3">No likes yet</div>';
+        containers.forEach(container => {
+            const postId = container.dataset.postId;
+            const popup = container.querySelector(popupSelector);
+            const list = container.querySelector(listSelector);
+            const loading = container.querySelector(loadingSelector);
+            const closeBtn = container.querySelector(closeBtnSelector);
+            
+            // Show popup on hover
+            container.addEventListener('mouseenter', async function() {
+                // Only fetch data if count > 0
+                const countText = container.querySelector(`.${type}-count`).textContent;
+                const count = parseInt(countText);
+                if (count > 0) {
+                    popup.style.display = 'block';
+                    
+                    // Show loading state
+                    loading.style.display = 'flex';
+                    list.style.display = 'none';
+                    
+                    try {
+                        // Fetch users who liked/commented on the post
+                        const response = await fetch(`/api/posts/${postId}/${type}`);
+                        if (response.ok) {
+                            const data = await response.json();
+                            
+                            // Clear previous content
+                            list.innerHTML = '';
+                            
+                            // Add users to the list
+                            if (data.users && data.users.length > 0) {
+                                data.users.forEach(user => {
+                                    const userElement = document.createElement('div');
+                                    userElement.className = `${type.slice(0, -1)}-user`;
+                                    
+                                    let avatarContent = '';
+                                    if (user.profile_pic) {
+                                        avatarContent = `<div class="${type.slice(0, -1)}-user-avatar"><img src="${user.profile_pic}" alt="${user.name}"></div>`;
+                                    } else {
+                                        avatarContent = `<div class="${type.slice(0, -1)}-user-avatar">${user.name.substring(0, 2).toUpperCase()}</div>`;
+                                    }
+                                    
+                                    userElement.innerHTML = `
+                                         ${avatarContent}
+                                         <div class="${type.slice(0, -1)}-user-info">
+                                             <div class="${type.slice(0, -1)}-user-name">${user.name}</div>
+                                             ${type === 'comments' && user.comment_text ? `<div class="comment-text">${user.comment_text}</div>` : ''}
+                                         </div>
+                                     `;
+                                    
+                                    list.appendChild(userElement);
+                                });
+                            } else {
+                                list.innerHTML = `<div class="text-center py-3">No ${type} yet</div>`;
+                            }
+                            
+                            // Hide loading, show list
+                            loading.style.display = 'none';
+                            list.style.display = 'block';
                         }
-                        
-                        // Hide loading, show list
-                        likesLoading.style.display = 'none';
-                        likesList.style.display = 'block';
+                    } catch (error) {
+                        console.error(`Error fetching ${type}:`, error);
+                        list.innerHTML = `<div class="text-center py-3 text-danger">Error loading ${type}</div>`;
+                        loading.style.display = 'none';
+                        list.style.display = 'block';
                     }
-                } catch (error) {
-                    console.error('Error fetching likes:', error);
-                    likesList.innerHTML = '<div class="text-center py-3 text-danger">Error loading likes</div>';
-                    likesLoading.style.display = 'none';
-                    likesList.style.display = 'block';
                 }
+            });
+            
+            // Hide popup when mouse leaves
+            container.addEventListener('mouseleave', function() {
+                popup.style.display = 'none';
+            });
+            
+            // Close button functionality
+            if (closeBtn) {
+                closeBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    popup.style.display = 'none';
+                });
             }
         });
-        
-        // Hide popup when mouse leaves
-        container.addEventListener('mouseleave', function() {
-            likesPopup.style.display = 'none';
-        });
-        
-        // Close button functionality
-        if (closeBtn) {
-            closeBtn.addEventListener('click', function(e) {
-                e.stopPropagation();
-                likesPopup.style.display = 'none';
-            });
-        }
-    });
+    }
+    
+    // Initialize likes popup functionality
+    initPopupFunctionality('.likes-count-container', '.likes-popup', '.close-likes-popup', '.likes-list', '.likes-loading', 'likes');
+    
+    // Initialize comments popup functionality
+    initPopupFunctionality('.comments-count-container', '.comments-popup', '.close-comments-popup', '.comments-list', '.comments-loading', 'comments');
 });
 
 // Like functionality for posts with AJAX - Optimistic UI updates
@@ -583,6 +651,14 @@ async function submitComment(event, postId) {
         if (response.ok) {
             // Clear the comment input
             commentInput.value = '';
+            
+            // Update comment counter
+            const commentCountElement = document.querySelector(`[data-post-id="${postId}"] .comments-count`);
+            if (commentCountElement) {
+                const currentCount = parseInt(commentCountElement.textContent.match(/\d+/)[0]);
+                const newCount = currentCount + 1;
+                commentCountElement.textContent = `${newCount} comments`;
+            }
             
             // Reload comments to show the new one
             await loadComments(postId);

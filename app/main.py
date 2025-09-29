@@ -720,6 +720,37 @@ async def get_post_likes(
     
     return {"users": users}
 
+@app.get("/api/posts/{post_id}/comments", response_class=JSONResponse)
+async def get_post_comments(
+    post_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    # Get users who commented on the post with their comments
+    result = await db.execute(
+        select(User.email, Profile.name, ProfileImage.profile_pic, Comment.content)
+        .join(Comment, Comment.user_id == User.id)
+        .outerjoin(Profile, Profile.user_id == User.id)
+        .outerjoin(ProfileImage, ProfileImage.user_id == User.id)
+        .where(Comment.post_id == post_id)
+        .order_by(Comment.created_at.desc())
+        .limit(50)  # Limit to 50 comments for performance
+    )
+    
+    comments = result.all()
+    
+    # Format the response
+    users = []
+    for email, name, profile_pic, content in comments:
+        display_name = name if name else email.split('@')[0]
+        users.append({
+            "email": email,
+            "name": display_name,
+            "profile_pic": profile_pic,
+            "comment_text": content
+        })
+    
+    return {"users": users}
+
 @app.get("/plans", response_class=HTMLResponse)
 async def plans(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get current user from session
