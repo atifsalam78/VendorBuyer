@@ -24,8 +24,24 @@
                 {% if posts %}
                     {% for post in posts %}
                     <div class="post-card card mb-4 shadow-sm" data-post-id="{{ post.id }}">
+                        {% if post.is_shared %}
+                        <!-- Shared Post Indicator -->
+                        <div class="shared-indicator">
+                            <i class="fas fa-share text-primary me-2"></i>
+                            <span>
+                                {% if post.sharer_profile_pic %}
+                                <img src="{{ post.sharer_profile_pic }}" alt="Sharer" class="rounded-circle me-2" style="width: 20px; height: 20px; object-fit: cover;">
+                                {% endif %}
+                                <strong>{{ post.sharer_name }}</strong> shared this post
+                            </span>
+                            <small class="text-muted ms-auto">
+                                {{ post.shared_at.strftime('%b %d, %Y at %H:%M') }}
+                            </small>
+                        </div>
+                        {% endif %}
+                        
                         <!-- Post Header -->
-                        <div class="card-header bg-transparent d-flex align-items-center">
+                        <div class="card-header bg-transparent d-flex align-items-center"{% if post.is_shared %} style="padding-top: 0;"{% endif %}>
                             {% if post.user_profile_pic %}
                             <img src="{{ post.user_profile_pic }}" alt="Profile" class="post-avatar rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
                             {% else %}
@@ -294,6 +310,19 @@
 
 .post-action:hover {
     color: #4A6CF7 !important;
+}
+
+/* Shared post indicator */
+.shared-indicator {
+    background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+    border-bottom: 1px solid #bbdefb;
+    padding: 12px 15px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
 }
 
 .empty-state-icon {
@@ -804,16 +833,25 @@ async function loadComments(postId) {
 // Share functionality
 async function sharePost(postId, shareType) {
     try {
-        const sessionId = localStorage.getItem('session_id');
-        if (!sessionId) {
+        // Get current user email from the page or session ID cookie
+        const currentUserEmail = '{{ current_user_email }}';
+        const sessionId = getCookie('session_id');
+        
+        if (!currentUserEmail && !sessionId) {
             alert('Please log in to share posts');
             return;
         }
 
         const formData = new FormData();
-        formData.append('session_id', sessionId);
         formData.append('post_id', postId);
         formData.append('share_type', shareType);
+        
+        // Send session ID instead of email for security
+        if (sessionId) {
+            formData.append('session_id', sessionId);
+        } else {
+            formData.append('email', currentUserEmail);
+        }
 
         const response = await fetch('/share-post', {
             method: 'POST',

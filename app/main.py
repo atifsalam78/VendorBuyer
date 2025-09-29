@@ -165,6 +165,18 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db), redis_ca
     )
     posts = posts_result.scalars().all()
     
+    # Query shared posts by the user (internal shares only)
+    shared_posts_result = await db.execute(
+        select(Post, Share, User, Profile)
+        .join(Share, Share.post_id == Post.id)
+        .join(User, User.id == Post.user_id)
+        .join(Profile, Profile.user_id == User.id)
+        .where(Share.user_id == user.id, Share.share_type == "internal")
+        .order_by(Share.created_at.desc())
+        .limit(10)  # Limit to 10 most recent shared posts
+    )
+    shared_posts_data = shared_posts_result.all()
+    
     # Create user data dictionary with actual user data
     user_data = {
         "id": user.id,
@@ -214,6 +226,24 @@ async def profile(request: Request, db: AsyncSession = Depends(get_db), redis_ca
                 "user_name": profile.name or user.email.split("@")[0]
             }
             for post in posts
+        ],
+        "shared_posts": [
+            {
+                "id": post.id,
+                "content": post.content,
+                "image_url": post.image_url,
+                "visibility": post.visibility,
+                "likes_count": await redis_cache.get_likes_count(post.id) or post.likes_count,
+                "comments_count": post.comments_count,
+                "shares_count": post.shares_count,
+                "created_at": post.created_at,
+                "shared_at": share.created_at,
+                "original_author": {
+                    "name": original_profile.name or original_user.email.split("@")[0],
+                    "email": original_user.email
+                }
+            }
+            for post, share, original_user, original_profile in shared_posts_data
         ]
     }
     
@@ -592,6 +622,44 @@ async def like_post(
         await db.rollback()
         return HTMLResponse(f"Error: {str(e)}", status_code=500)
 
+@app.get("/api/user/{user_id}/shared-posts")
+async def get_user_shared_posts(user_id: int, request: Request, db: AsyncSession = Depends(get_db)):
+    """Get shared posts for a specific user"""
+    try:
+        # Get user's shared posts with post details
+        shared_posts_result = await db.execute(
+            select(Share).where(Share.user_id == user_id).order_by(Share.created_at.desc()).limit(20)
+        )
+        shared_posts = shared_posts_result.scalars().all()
+        
+        shared_posts_data = []
+        for share in shared_posts:
+            post_result = await db.execute(select(Post).where(Post.id == share.post_id))
+            post = post_result.scalars().first()
+            if post:
+                # Get post author info
+                author_result = await db.execute(select(User).where(User.id == post.user_id))
+                author = author_result.scalars().first()
+                
+                post_data = {
+                    "id": post.id,
+                    "content": post.content,
+                    "image_url": post.image_url,
+                    "created_at": post.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                    "likes_count": post.likes_count,
+                    "shares_count": post.shares_count,
+                    "author": {
+                        "id": author.id,
+                        "email": author.email
+                    },
+                    "shared_at": share.created_at.strftime("%Y-%m-%d %H:%M:%S")
+                }
+                shared_posts_data.append(post_data)
+        
+        return {"shared_posts": shared_posts_data}
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
 @app.post("/share-post", response_class=HTMLResponse)
 async def share_post(
     request: Request,
@@ -673,79 +741,198 @@ async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_d
     if not current_user:
         # Redirect to login page if no valid session
         return RedirectResponse(url="/", status_code=303)
-    
+
     # Pagination settings
     posts_per_page = 10
     offset = (page - 1) * posts_per_page
     
-    # Fetch total count of public posts
+    # Fetch total count of public posts and shared posts
     total_posts_result = await db.execute(
         select(func.count()).select_from(Post)
         .where(Post.visibility == "public")
     )
     total_posts = total_posts_result.scalar()
     
-    # Calculate total pages
-    total_pages = (total_posts + posts_per_page - 1) // posts_per_page
+    total_shares_result = await db.execute(
+        select(func.count()).select_from(Share)
+        .join(Post, Share.post_id == Post.id)
+        .where(Post.visibility == "public")
+    )
+    total_shares = total_shares_result.scalar()
     
-    # Fetch paginated public posts with user information, ordered by most recent (use LEFT JOIN to include posts even if user doesn't exist)
-    result = await db.execute(
+    total_items = total_posts + total_shares
+    
+    # Calculate total pages
+    total_pages = (total_items + posts_per_page - 1) // posts_per_page
+    
+    # Fetch paginated public posts with user information
+    posts_result = await db.execute(
         select(Post, User.email)
         .outerjoin(User, Post.user_id == User.id)
         .where(Post.visibility == "public")
         .order_by(Post.created_at.desc())
-        .limit(posts_per_page)
-        .offset(offset)
     )
+    posts_with_users = posts_result.all()
     
-    posts_with_users = result.all()
+    # Fetch shared posts with sharer and original author information
+    shares_result = await db.execute(
+        select(Share, Post, User.email.label('sharer_email'), User.id.label('sharer_id'))
+        .join(Post, Share.post_id == Post.id)
+        .join(User, Share.user_id == User.id)
+        .where(Post.visibility == "public")
+        .order_by(Share.created_at.desc())
+    )
+    shares_with_info = shares_result.all()
+    
+    # Combine and sort all items by timestamp
+    all_items = []
+    
+    # Add original posts
+    for post, user_email in posts_with_users:
+        all_items.append({
+            'type': 'post',
+            'timestamp': post.created_at,
+            'data': (post, user_email)
+        })
+    
+    # Add shared posts
+    for share, post, sharer_email, sharer_id in shares_with_info:
+        all_items.append({
+            'type': 'share',
+            'timestamp': share.created_at,
+            'data': (share, post, sharer_email, sharer_id)
+        })
+    
+    # Sort by timestamp (most recent first)
+    all_items.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    # Apply pagination
+    paginated_items = all_items[offset:offset + posts_per_page]
     
     # Format the data for the template
     formatted_posts = []
-    for post, user_email in posts_with_users:
-        # Handle case where user doesn't exist (user_email is None)
-        if user_email is None:
-            user_name = "[user deleted]"
-            user_profile_pic = None
-        else:
-            # Load user profile information separately
-            user_name = user_email.split('@')[0]
-            user_profile_pic = None
-        
-        # Query for the user's profile
-        profile_result = await db.execute(
-            select(Profile).where(Profile.user_id == post.user_id)
-        )
-        profile = profile_result.scalars().first()
-        
-        if profile:
-            user_name = profile.name if profile.name else user_name
-            # Query for profile image if profile exists
-            profile_image_result = await db.execute(
-                select(ProfileImage).where(ProfileImage.user_id == post.user_id)
+    for item in paginated_items:
+        if item['type'] == 'post':
+            post, user_email = item['data']
+            
+            # Handle case where user doesn't exist
+            if user_email is None:
+                user_name = "[user deleted]"
+                user_profile_pic = None
+            else:
+                user_name = user_email.split('@')[0]
+                user_profile_pic = None
+            
+            # Query for the user's profile
+            profile_result = await db.execute(
+                select(Profile).where(Profile.user_id == post.user_id)
             )
-            profile_image = profile_image_result.scalars().first()
-            if profile_image:
-                user_profile_pic = profile_image.profile_pic
-        
-        # Get likes count from Redis cache first, fallback to database
-        cached_likes = await redis_cache.get_likes_count(post.id)
-        likes_count = cached_likes if cached_likes is not None else post.likes_count
-        
-        formatted_posts.append({
-            "id": post.id,
-            "content": post.content,
-            "image_url": post.image_url,
-            "visibility": post.visibility,
-            "likes_count": likes_count,
-            "comments_count": post.comments_count,
-            "shares_count": post.shares_count,
-            "created_at": post.created_at,
-            "user_email": user_email,
-            "user_name": user_name,
-            "user_profile_pic": user_profile_pic
-        })
-    
+            profile = profile_result.scalars().first()
+            
+            if profile:
+                user_name = profile.name if profile.name else user_name
+                # Query for profile image if profile exists
+                profile_image_result = await db.execute(
+                    select(ProfileImage).where(ProfileImage.user_id == post.user_id)
+                )
+                profile_image = profile_image_result.scalars().first()
+                if profile_image:
+                    user_profile_pic = profile_image.profile_pic
+            
+            # Get likes count from Redis cache first, fallback to database
+            cached_likes = await redis_cache.get_likes_count(post.id)
+            likes_count = cached_likes if cached_likes is not None else post.likes_count
+            
+            formatted_posts.append({
+                "id": post.id,
+                "content": post.content,
+                "image_url": post.image_url,
+                "visibility": post.visibility,
+                "likes_count": likes_count,
+                "comments_count": post.comments_count,
+                "shares_count": post.shares_count,
+                "created_at": post.created_at,
+                "user_email": user_email,
+                "user_name": user_name,
+                "user_profile_pic": user_profile_pic,
+                "is_shared": False
+            })
+            
+        elif item['type'] == 'share':
+            share, post, sharer_email, sharer_id = item['data']
+            
+            # Get original post author info
+            original_author_result = await db.execute(
+                select(User).where(User.id == post.user_id)
+            )
+            original_author = original_author_result.scalars().first()
+            
+            original_author_name = "[user deleted]"
+            original_author_profile_pic = None
+            
+            if original_author:
+                original_author_name = original_author.email.split('@')[0]
+                
+                # Get original author's profile
+                original_profile_result = await db.execute(
+                    select(Profile).where(Profile.user_id == original_author.id)
+                )
+                original_profile = original_profile_result.scalars().first()
+                
+                if original_profile and original_profile.name:
+                    original_author_name = original_profile.name
+                    
+                    # Get original author's profile image
+                    original_profile_image_result = await db.execute(
+                        select(ProfileImage).where(ProfileImage.user_id == original_author.id)
+                    )
+                    original_profile_image = original_profile_image_result.scalars().first()
+                    if original_profile_image:
+                        original_author_profile_pic = original_profile_image.profile_pic
+            
+            # Get sharer info
+            sharer_name = sharer_email.split('@')[0] if sharer_email else "[user deleted]"
+            sharer_profile_pic = None
+            
+            sharer_profile_result = await db.execute(
+                select(Profile).where(Profile.user_id == sharer_id)
+            )
+            sharer_profile = sharer_profile_result.scalars().first()
+            
+            if sharer_profile and sharer_profile.name:
+                sharer_name = sharer_profile.name
+                
+                # Get sharer's profile image
+                sharer_profile_image_result = await db.execute(
+                    select(ProfileImage).where(ProfileImage.user_id == sharer_id)
+                )
+                sharer_profile_image = sharer_profile_image_result.scalars().first()
+                if sharer_profile_image:
+                    sharer_profile_pic = sharer_profile_image.profile_pic
+            
+            # Get likes count from Redis cache first, fallback to database
+            cached_likes = await redis_cache.get_likes_count(post.id)
+            likes_count = cached_likes if cached_likes is not None else post.likes_count
+            
+            formatted_posts.append({
+                "id": post.id,
+                "content": post.content,
+                "image_url": post.image_url,
+                "visibility": post.visibility,
+                "likes_count": likes_count,
+                "comments_count": post.comments_count,
+                "shares_count": post.shares_count,
+                "created_at": post.created_at,
+                "user_email": original_author.email if original_author else None,
+                "user_name": original_author_name,
+                "user_profile_pic": original_author_profile_pic,
+                "is_shared": True,
+                "shared_at": share.created_at,
+                "sharer_name": sharer_name,
+                "sharer_email": sharer_email,
+                "sharer_profile_pic": sharer_profile_pic
+            })
+
     return templates.TemplateResponse(
         "feed.html", 
         {
@@ -755,7 +942,7 @@ async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_d
             "current_user_profile_pic": current_user_profile_pic,
             "current_page": page,
             "total_pages": total_pages,
-            "total_posts": total_posts,
+            "total_posts": total_items,
             "has_next": page < total_pages,
             "has_prev": page > 1,
             "next_page": page + 1,

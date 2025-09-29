@@ -923,6 +923,24 @@
         .post-action:hover {
             color: var(--accent);
         }
+        
+        /* Shared post indicator */
+        .shared-indicator {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .shared-post {
+            border-left: 3px solid var(--accent);
+            padding-left: 20px;
+        }
 
         /* Products Showcase */
         .products-showcase {
@@ -1696,36 +1714,109 @@
                             <i class="fas fa-plus-circle"></i> Create New Post
                         </button>
                     </div>
-                    {% for post in user.posts %}
-                    <div class="post" data-post-id="{{ post.id }}">
-                        <div class="post-header">
-                            <div class="post-avatar">{{ post.user_name[:2]|upper }}</div>
-                            <div class="post-meta">
-                                <h4>{{ post.user_name }}</h4>
-                                <span>Posted {{ post.created_at.strftime('%b %d, %Y %H:%M:%S') }}</span>
+                    
+                    <!-- Navigation tabs for posts -->
+                    <ul class="nav nav-tabs mb-3" id="postsTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="my-posts-tab" data-bs-toggle="tab" data-bs-target="#my-posts" type="button" role="tab">
+                                <i class="fas fa-edit"></i> My Posts ({{ user.posts|length }})
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="shared-posts-tab" data-bs-toggle="tab" data-bs-target="#shared-posts" type="button" role="tab">
+                                <i class="fas fa-share"></i> Shared Posts ({{ user.shared_posts|length }})
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <!-- Tab content -->
+                    <div class="tab-content" id="postsTabContent">
+                        <!-- My Posts Tab -->
+                        <div class="tab-pane fade show active" id="my-posts" role="tabpanel">
+                            {% for post in user.posts %}
+                            <div class="post" data-post-id="{{ post.id }}">
+                                <div class="post-header">
+                                    <div class="post-avatar">{{ post.user_name[:2]|upper }}</div>
+                                    <div class="post-meta">
+                                        <h4>{{ post.user_name }}</h4>
+                                        <span>Posted {{ post.created_at.strftime('%b %d, %Y %H:%M:%S') }}</span>
+                                    </div>
+                                </div>
+                                <div class="post-content">
+                                    <p>{{ post.content }}</p>
+                                </div>
+                                {% if post.image_url %}
+                                <div class="post-image">
+                                    <img src="/static/uploads/{{ post.image_url }}" alt="Post image" style="width: 100%; height: auto; border-radius: 8px;">
+                                </div>
+                                {% endif %}
+                                <div class="post-actions">
+                                    <div class="post-action">
+                                        <i class="far fa-thumbs-up"></i> <span>{{ post.likes_count }}</span>
+                                    </div>
+                                    <div class="post-action">
+                                        <i class="far fa-comment"></i> <span>{{ post.comments_count }}</span>
+                                    </div>
+                                    <div class="post-action">
+                                        <i class="far fa-share-square"></i> <span>{{ post.shares_count }}</span>
+                                    </div>
+                                </div>
                             </div>
+                            {% endfor %}
+                            {% if not user.posts %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-edit fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No posts yet</h5>
+                                <p class="text-muted">Start sharing your thoughts with the community!</p>
+                            </div>
+                            {% endif %}
                         </div>
-                        <div class="post-content">
-                            <p>{{ post.content }}</p>
-                        </div>
-                        {% if post.image_url %}
-                        <div class="post-image">
-                            <img src="/static/uploads/{{ post.image_url }}" alt="Post image" style="width: 100%; height: auto; border-radius: 8px;">
-                        </div>
-                        {% endif %}
-                        <div class="post-actions">
-                            <div class="post-action">
-                                <i class="far fa-thumbs-up"></i> <span>{{ post.likes_count }}</span>
+                        
+                        <!-- Shared Posts Tab -->
+                        <div class="tab-pane fade" id="shared-posts" role="tabpanel">
+                            {% for shared_post in user.shared_posts %}
+                            <div class="post shared-post" data-post-id="{{ shared_post.id }}">
+                                <div class="shared-indicator">
+                                    <i class="fas fa-share text-primary"></i>
+                                    <span class="text-primary">You shared this post on {{ shared_post.shared_at.strftime('%b %d, %Y') }}</span>
+                                </div>
+                                <div class="post-header">
+                                    <div class="post-avatar">{{ shared_post.original_author.name[:2]|upper }}</div>
+                                    <div class="post-meta">
+                                        <h4>{{ shared_post.original_author.name }}</h4>
+                                        <span>Originally posted {{ shared_post.created_at.strftime('%b %d, %Y %H:%M:%S') }}</span>
+                                    </div>
+                                </div>
+                                <div class="post-content">
+                                    <p>{{ shared_post.content }}</p>
+                                </div>
+                                {% if shared_post.image_url %}
+                                <div class="post-image">
+                                    <img src="/static/uploads/{{ shared_post.image_url }}" alt="Post image" style="width: 100%; height: auto; border-radius: 8px;">
+                                </div>
+                                {% endif %}
+                                <div class="post-actions">
+                                    <div class="post-action">
+                                        <i class="far fa-thumbs-up"></i> <span>{{ shared_post.likes_count }}</span>
+                                    </div>
+                                    <div class="post-action">
+                                        <i class="far fa-comment"></i> <span>{{ shared_post.comments_count }}</span>
+                                    </div>
+                                    <div class="post-action">
+                                        <i class="far fa-share-square"></i> <span>{{ shared_post.shares_count }}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="post-action">
-                                <i class="far fa-comment"></i> <span>{{ post.comments_count }}</span>
+                            {% endfor %}
+                            {% if not user.shared_posts %}
+                            <div class="text-center py-5">
+                                <i class="fas fa-share fa-3x text-muted mb-3"></i>
+                                <h5 class="text-muted">No shared posts yet</h5>
+                                <p class="text-muted">Share interesting posts from the community to show them here!</p>
                             </div>
-                            <div class="post-action">
-                                <i class="far fa-share-square"></i> <span>{{ post.shares_count }}</span>
-                            </div>
+                            {% endif %}
                         </div>
                     </div>
-                    {% endfor %}
                 </div>
 
                 <!-- Products Showcase -->
