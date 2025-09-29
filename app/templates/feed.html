@@ -103,20 +103,79 @@
                                         </div>
                                     </div>
                                 </span>
-                                <span><i class="fas fa-share me-1"></i>{{ post.shares_count }} shares</span>
+                                <span class="shares-count-container" data-post-id="{{ post.id }}">
+                                    <i class="fas fa-share me-1"></i>
+                                    <span class="shares-count">{{ post.shares_count }} shares</span>
+                                    <!-- Shares popup will be inserted here -->
+                                    <div class="shares-popup" style="display: none;">
+                                        <div class="shares-popup-header">
+                                            <strong>Shared by</strong>
+                                            <button type="button" class="btn-close btn-sm close-shares-popup"></button>
+                                        </div>
+                                        <div class="shares-popup-content">
+                                            <div class="shares-loading">
+                                                <div class="spinner-border spinner-border-sm" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <span class="ms-2">Loading...</span>
+                                            </div>
+                                            <div class="shares-list"></div>
+                                        </div>
+                                    </div>
+                                </span>
                             </div>
 
                             <!-- Post Actions -->
                             <div class="post-actions d-flex justify-content-around border-top border-bottom py-2">
-                                <button class="post-action btn btn-link text-decoration-none text-muted">
+                                <button class="post-action like-button btn btn-link text-decoration-none text-muted">
                                     <i class="far fa-thumbs-up me-1"></i>Like
                                 </button>
                                 <button class="post-action btn btn-link text-decoration-none text-muted" onclick="toggleComments('{{ post.id }}')">
                                     <i class="far fa-comment me-1"></i>Comment
                                 </button>
-                                <button class="post-action btn btn-link text-decoration-none text-muted">
-                                    <i class="far fa-share-square me-1"></i>Share
-                                </button>
+                                <div class="dropdown">
+                                    <button class="post-action btn btn-link text-decoration-none text-muted dropdown-toggle" 
+                                            type="button" 
+                                            id="shareDropdown{{ post.id }}" 
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false">
+                                        <i class="far fa-share-square me-1"></i>Share
+                                    </button>
+                                    <ul class="dropdown-menu" aria-labelledby="shareDropdown{{ post.id }}">
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="sharePost('{{ post.id }}', 'internal')">
+                                                <i class="fas fa-users me-2"></i>Share on Platform
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="shareExternal('{{ post.id }}', 'facebook')">
+                                                <i class="fab fa-facebook me-2"></i>Share on Facebook
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="shareExternal('{{ post.id }}', 'twitter')">
+                                                <i class="fab fa-twitter me-2"></i>Share on Twitter
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="shareExternal('{{ post.id }}', 'linkedin')">
+                                                <i class="fab fa-linkedin me-2"></i>Share on LinkedIn
+                                            </a>
+                                        </li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="copyPostLink('{{ post.id }}')">
+                                                <i class="fas fa-link me-2"></i>Copy Link
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="#" onclick="shareViaEmail('{{ post.id }}')">
+                                                <i class="fas fa-envelope me-2"></i>Share via Email
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
 
                             <!-- Comments Section -->
@@ -242,12 +301,12 @@
 }
 
 /* Likes popup styling */
-.likes-count-container, .comments-count-container {
+.likes-count-container, .comments-count-container, .shares-count-container {
     position: relative;
     cursor: pointer;
 }
 
-.likes-popup, .comments-popup {
+.likes-popup, .comments-popup, .shares-popup {
     position: absolute;
     top: 100%;
     left: 0;
@@ -261,7 +320,7 @@
     margin-top: 5px;
 }
 
-.likes-popup-header, .comments-popup-header {
+.likes-popup-header, .comments-popup-header, .shares-popup-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -281,7 +340,7 @@
     font-weight: 500;
 } */
 
-.likes-popup-content, .comments-popup-content {
+.likes-popup-content, .comments-popup-content, .shares-popup-content {
     padding: 10px;
     max-height: 250px;
     overflow-y: auto;
@@ -294,14 +353,14 @@
     background-color: #f8f9fa;
 } */
 
-.likes-loading {
+.likes-loading, .shares-loading {
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 15px;
 }
 
-.likes-list {
+.likes-list, .shares-list {
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -453,10 +512,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize comments popup functionality
     initPopupFunctionality('.comments-count-container', '.comments-popup', '.close-comments-popup', '.comments-list', '.comments-loading', 'comments');
+    
+    // Initialize shares popup functionality
+    initPopupFunctionality('.shares-count-container', '.shares-popup', '.close-shares-popup', '.shares-list', '.shares-loading', 'shares');
 });
 
 // Like functionality for posts with AJAX - Optimistic UI updates
-const likeButtons = document.querySelectorAll('.post-action:first-child');
+const likeButtons = document.querySelectorAll('.post-action.like-button');
 likeButtons.forEach(button => {
     button.addEventListener('click', async function() {
         const icon = this.querySelector('i');
@@ -737,6 +799,143 @@ async function loadComments(postId) {
             commentsContainer.appendChild(commentForm);
         }
     }
+}
+
+// Share functionality
+async function sharePost(postId, shareType) {
+    try {
+        const sessionId = localStorage.getItem('session_id');
+        if (!sessionId) {
+            alert('Please log in to share posts');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('session_id', sessionId);
+        formData.append('post_id', postId);
+        formData.append('share_type', shareType);
+
+        const response = await fetch('/share-post', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const newCount = await response.text();
+            
+            // Update share counter
+            const shareCountElement = document.querySelector(`[data-post-id="${postId}"] .shares-count`);
+            if (shareCountElement) {
+                shareCountElement.textContent = `${newCount} shares`;
+            }
+            
+            if (shareType === 'internal') {
+                alert('Post shared on platform successfully!');
+            }
+        } else {
+            const errorText = await response.text();
+            if (errorText.includes('Already shared')) {
+                alert('You have already shared this post on the platform');
+            } else {
+                console.error('Failed to share post:', errorText);
+                alert('Error sharing post. Please try again.');
+            }
+        }
+    } catch (error) {
+        console.error('Error sharing post:', error);
+        alert('Error sharing post. Please try again.');
+    }
+}
+
+function shareExternal(postId, platform) {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    const postTitle = document.querySelector(`[data-post-id="${postId}"]`).closest('.post-card').querySelector('.post-content').textContent.substring(0, 100) + '...';
+    
+    let shareUrl = '';
+    
+    switch (platform) {
+        case 'facebook':
+            shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(postUrl)}`;
+            break;
+        case 'twitter':
+            shareUrl = `https://twitter.com/intent/tweet?url=${encodeURIComponent(postUrl)}&text=${encodeURIComponent(postTitle)}`;
+            break;
+        case 'linkedin':
+            shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(postUrl)}`;
+            break;
+        default:
+            alert('Platform not supported');
+            return;
+    }
+    
+    // Open share window
+    window.open(shareUrl, 'share-window', 'width=600,height=400,scrollbars=yes,resizable=yes');
+    
+    // Track external share
+    trackExternalShare(postId, platform);
+}
+
+async function trackExternalShare(postId, platform) {
+    try {
+        const sessionId = localStorage.getItem('session_id');
+        if (!sessionId) return;
+
+        const formData = new FormData();
+        formData.append('session_id', sessionId);
+        formData.append('post_id', postId);
+        formData.append('share_type', platform);
+
+        const response = await fetch('/share-post', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (response.ok) {
+            const newCount = await response.text();
+            
+            // Update share counter
+            const shareCountElement = document.querySelector(`[data-post-id="${postId}"] .shares-count`);
+            if (shareCountElement) {
+                shareCountElement.textContent = `${newCount} shares`;
+            }
+        }
+    } catch (error) {
+        console.error('Error tracking external share:', error);
+    }
+}
+
+function copyPostLink(postId) {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    
+    navigator.clipboard.writeText(postUrl).then(() => {
+        alert('Post link copied to clipboard!');
+        // Track link copy as external share
+        trackExternalShare(postId, 'link_copy');
+    }).catch(err => {
+        console.error('Failed to copy link:', err);
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = postUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        alert('Post link copied to clipboard!');
+        trackExternalShare(postId, 'link_copy');
+    });
+}
+
+function shareViaEmail(postId) {
+    const postUrl = `${window.location.origin}/post/${postId}`;
+    const postTitle = document.querySelector(`[data-post-id="${postId}"]`).closest('.post-card').querySelector('.post-content').textContent.substring(0, 100) + '...';
+    
+    const subject = encodeURIComponent('Check out this post');
+    const body = encodeURIComponent(`I thought you might be interested in this post:\n\n${postTitle}\n\nView it here: ${postUrl}`);
+    
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    
+    // Track email share
+    trackExternalShare(postId, 'email');
 }
 </script>
 {% endblock %}

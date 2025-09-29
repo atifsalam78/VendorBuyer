@@ -103,6 +103,7 @@ class Post(Base):
     # Relationships
     user = relationship("User")
     likes = relationship("Like", back_populates="post", cascade="all, delete-orphan")
+    shares = relationship("Share", back_populates="post", cascade="all, delete-orphan")
     
     # Add indexes for high traffic optimization
     __table_args__ = (
@@ -125,8 +126,28 @@ class Comment(Base):
     user = relationship("User")
     post = relationship("Post")
     
-    # Add indexes for optimization
+    # Indexes for performance
     __table_args__ = (
         Index('ix_comments_post_created', 'post_id', 'created_at'),  # For sorting comments by post
         Index('ix_comments_user_created', 'user_id', 'created_at'),  # For user comment history
+    )
+
+class Share(Base):
+    __tablename__ = "shares"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), index=True)
+    post_id = Column(Integer, ForeignKey("posts.id"), index=True)
+    share_type = Column(String, default="internal")  # internal, external_link, facebook, twitter, etc.
+    created_at = Column(DateTime, default=func.now())
+    
+    # Relationships
+    user = relationship("User")
+    post = relationship("Post", back_populates="shares")
+    
+    # Indexes for performance and uniqueness
+    __table_args__ = (
+        Index('ix_shares_user_post', 'user_id', 'post_id'),  # For checking if user shared post
+        Index('ix_shares_post_created', 'post_id', 'created_at'),  # For sorting shares by post
+        Index('ix_shares_user_created', 'user_id', 'created_at'),  # For user share history
     )

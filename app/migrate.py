@@ -2,11 +2,11 @@ import asyncio
 import os
 from sqlalchemy import text
 from app.deps import engine
-from app.config import BASE_DIR
+from app.config import settings
 
 async def migrate():
     # Database path for logging purposes
-    db_path = os.path.join(BASE_DIR, "bazaarhub.db")
+    db_path = os.path.join(settings.BASE_DIR, "bazaarhub.db")
     print(f"Starting migrations using database at {db_path}")
     
     try:
@@ -320,6 +320,55 @@ async def migrate():
                 if not created_index_exists:
                     await conn.execute(text("CREATE INDEX ix_likes_created_at ON likes(created_at)"))
                     print("Created at index created for likes table.")
+            
+            # PART 4: Create shares table
+            print("\nMigration 4: Adding shares table...")
+            
+            # Check if shares table exists
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='shares'"))
+            table_exists = result.fetchone() is not None
+            
+            if not table_exists:
+                print("Creating shares table...")
+                await conn.execute(text("""
+                CREATE TABLE shares (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    post_id INTEGER NOT NULL,
+                    share_type TEXT DEFAULT 'internal',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users (id),
+                    FOREIGN KEY (post_id) REFERENCES posts (id)
+                )
+                """))
+                print("Shares table created successfully.")
+            else:
+                print("Shares table already exists.")
+            
+            # Create indexes for shares table
+            print("Creating indexes for shares table...")
+            
+            # Check if indexes exist
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_shares_user_post'"))
+            user_post_index_exists = result.fetchone() is not None
+            
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_shares_post_created'"))
+            post_created_index_exists = result.fetchone() is not None
+            
+            result = await conn.execute(text("SELECT name FROM sqlite_master WHERE type='index' AND name='ix_shares_user_created'"))
+            user_created_index_exists = result.fetchone() is not None
+            
+            if not user_post_index_exists:
+                await conn.execute(text("CREATE INDEX ix_shares_user_post ON shares(user_id, post_id)"))
+                print("User-post index created for shares table.")
+            
+            if not post_created_index_exists:
+                await conn.execute(text("CREATE INDEX ix_shares_post_created ON shares(post_id, created_at)"))
+                print("Post-created index created for shares table.")
+            
+            if not user_created_index_exists:
+                await conn.execute(text("CREATE INDEX ix_shares_user_created ON shares(user_id, created_at)"))
+                print("User-created index created for shares table.")
             
             print("All migrations completed successfully!")
     except Exception as e:

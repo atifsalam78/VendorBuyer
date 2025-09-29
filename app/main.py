@@ -16,7 +16,7 @@ from sqlalchemy import insert, update, delete, func
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db, get_current_user_profile_pic
 from sqlalchemy import func
-from app.models import User, Profile, ProfileImage, Post, Like, Comment
+from app.models import User, Profile, ProfileImage, Post, Like, Comment, Share
 from app.auth import verify_password, create_session, SESSION_COOKIE_NAME, delete_session, get_current_user
 from app.redis_cache import get_redis_cache, SimpleCache
 from app.rate_limiter import get_rate_limiter, RateLimiter
@@ -592,6 +592,79 @@ async def like_post(
         await db.rollback()
         return HTMLResponse(f"Error: {str(e)}", status_code=500)
 
+@app.post("/share-post", response_class=HTMLResponse)
+async def share_post(
+    request: Request,
+    email: str = Form(None),  # Optional - for backward compatibility
+    session_id: str = Form(None),  # New parameter for session-based authentication
+    post_id: int = Form(...),
+    share_type: str = Form("internal"),  # "internal", "external_link", "facebook", "twitter", etc.
+    db: AsyncSession = Depends(get_db),
+    redis_cache: SimpleCache = Depends(get_redis_cache)
+):
+    try:
+        # Debug logging
+        print(f"Share request - email: {email}, session_id: {session_id}, post_id: {post_id}, share_type: {share_type}")
+        
+        # Determine user email from session or direct email parameter
+        user_email = None
+        if session_id:
+            # Validate session and get user email
+            user_email = validate_session(session_id)
+            if not user_email:
+                return HTMLResponse("Invalid session", status_code=401)
+        elif email:
+            # Use direct email parameter (for backward compatibility)
+            user_email = email
+        else:
+            return HTMLResponse("Authentication required", status_code=401)
+        
+        # Get user and post in a single query using joins to reduce round trips
+        result = await db.execute(
+            select(User, Post)
+            .join(Post, Post.id == post_id)
+            .where(User.email == user_email)
+        )
+        user_post = result.first()
+        
+        if not user_post:
+            return HTMLResponse("User or post not found", status_code=404)
+        
+        user, post = user_post
+        
+        # Check if share already exists for internal shares (prevent duplicate internal shares)
+        if share_type == "internal":
+            existing_share_result = await db.execute(
+                select(Share).where(Share.user_id == user.id, Share.post_id == post_id, Share.share_type == "internal")
+            )
+            existing_share = existing_share_result.scalars().first()
+            
+            if existing_share:
+                # User already shared this post internally
+                return HTMLResponse("Already shared", status_code=200)
+        
+        # Insert new share and update count in single operation
+        new_share = Share(user_id=user.id, post_id=post_id, share_type=share_type)
+        db.add(new_share)
+        
+        # Update shares count directly
+        post.shares_count += 1
+        
+        await db.commit()
+        
+        # Force refresh the post object to get the latest count from database
+        await db.refresh(post)
+        
+        # Update Redis cache with the actual database value
+        await redis_cache.set_shares_count(post_id, post.shares_count)
+        
+        print(f"Returning shares count: {post.shares_count}")
+        return HTMLResponse(str(post.shares_count), status_code=200)
+        
+    except Exception as e:
+        await db.rollback()
+        return HTMLResponse(f"Error: {str(e)}", status_code=500)
+
 @app.get("/feed", response_class=HTMLResponse)
 async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_db), redis_cache: SimpleCache = Depends(get_redis_cache), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):
     # Get current user from session
@@ -716,6 +789,37 @@ async def get_post_likes(
             "email": email,
             "name": display_name,
             "profile_pic": profile_pic
+        })
+    
+    return {"users": users}
+
+@app.get("/api/posts/{post_id}/shares", response_class=JSONResponse)
+async def get_post_shares(
+    post_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    # Get users who shared the post
+    result = await db.execute(
+        select(User.email, Profile.name, ProfileImage.profile_pic, Share.share_type, Share.created_at)
+        .join(Share, Share.user_id == User.id)
+        .outerjoin(Profile, Profile.user_id == User.id)
+        .outerjoin(ProfileImage, ProfileImage.user_id == User.id)
+        .where(Share.post_id == post_id)
+        .order_by(Share.created_at.desc())
+        .limit(50)  # Limit to 50 shares for performance
+    )
+    
+    shares = result.all()
+    
+    # Format the response
+    users = []
+    for share in shares:
+        users.append({
+            "email": share.email,
+            "name": share.name or share.email.split('@')[0],
+            "profile_pic": share.profile_pic or "/static/uploads/default-avatar.png",
+            "share_type": share.share_type,
+            "shared_at": share.created_at.isoformat() if share.created_at else None
         })
     
     return {"users": users}
