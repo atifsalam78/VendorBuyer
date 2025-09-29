@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Depends, Form, UploadFile, File, Response
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 import shutil
 import os
 from uuid import uuid4
@@ -689,6 +689,36 @@ async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_d
             "prev_page": page - 1
         }
     )
+
+@app.get("/api/posts/{post_id}/likes", response_class=JSONResponse)
+async def get_post_likes(
+    post_id: int,
+    db: AsyncSession = Depends(get_db)
+):
+    # Get users who liked the post
+    result = await db.execute(
+        select(User.email, Profile.name, ProfileImage.profile_pic)
+        .join(Like, Like.user_id == User.id)
+        .outerjoin(Profile, Profile.user_id == User.id)
+        .outerjoin(ProfileImage, ProfileImage.user_id == User.id)
+        .where(Like.post_id == post_id)
+        .order_by(Like.created_at.desc())
+        .limit(50)  # Limit to 50 users for performance
+    )
+    
+    likes = result.all()
+    
+    # Format the response
+    users = []
+    for email, name, profile_pic in likes:
+        display_name = name if name else email.split('@')[0]
+        users.append({
+            "email": email,
+            "name": display_name,
+            "profile_pic": profile_pic
+        })
+    
+    return {"users": users}
 
 @app.get("/plans", response_class=HTMLResponse)
 async def plans(request: Request, db: AsyncSession = Depends(get_db), current_user_profile_pic: str = Depends(get_current_user_profile_pic)):

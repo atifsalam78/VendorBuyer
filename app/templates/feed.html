@@ -63,7 +63,26 @@
 
                             <!-- Post Stats -->
                             <div class="d-flex justify-content-between text-muted small mb-3">
-                                <span><i class="fas fa-heart me-1"></i>{{ post.likes_count }} likes</span>
+                                <span class="likes-count-container" data-post-id="{{ post.id }}">
+                                    <i class="fas fa-heart me-1"></i>
+                                    <span class="likes-count">{{ post.likes_count }} likes</span>
+                                    <!-- Likes popup will be inserted here -->
+                                    <div class="likes-popup" style="display: none;">
+                                        <div class="likes-popup-header">
+                                            <strong>Liked by</strong>
+                                            <button type="button" class="btn-close btn-sm close-likes-popup"></button>
+                                        </div>
+                                        <div class="likes-popup-content">
+                                            <div class="likes-loading">
+                                                <div class="spinner-border spinner-border-sm" role="status">
+                                                    <span class="visually-hidden">Loading...</span>
+                                                </div>
+                                                <span class="ms-2">Loading...</span>
+                                            </div>
+                                            <div class="likes-list"></div>
+                                        </div>
+                                    </div>
+                                </span>
                                 <span><i class="fas fa-comment me-1"></i>{{ post.comments_count }} comments</span>
                                 <span><i class="fas fa-share me-1"></i>{{ post.shares_count }} shares</span>
                             </div>
@@ -202,12 +221,172 @@
 .empty-state-icon {
     opacity: 0.5;
 }
+
+/* Likes popup styling */
+.likes-count-container {
+    position: relative;
+    cursor: pointer;
+}
+
+.likes-popup {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 250px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    overflow: hidden;
+    max-height: 300px;
+}
+
+.likes-popup-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 15px;
+    border-bottom: 1px solid #e0e0e0;
+    background-color: #f8f9fa;
+}
+
+.likes-popup-content {
+    padding: 10px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.likes-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+}
+
+.likes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.like-user {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px;
+}
+
+.like-user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: #4A6CF7;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+}
+
+.like-user-name {
+    font-weight: 500;
+}
+
+.like-user-email {
+    font-size: 12px;
+    color: #6c757d;
+}
 </style>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Likes popup functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const likesContainers = document.querySelectorAll('.likes-count-container');
+    
+    likesContainers.forEach(container => {
+        const postId = container.dataset.postId;
+        const likesPopup = container.querySelector('.likes-popup');
+        const likesList = container.querySelector('.likes-list');
+        const likesLoading = container.querySelector('.likes-loading');
+        const closeBtn = container.querySelector('.close-likes-popup');
+        
+        // Show popup on hover
+        container.addEventListener('mouseenter', async function() {
+            // Only fetch data if likes count > 0
+            const likesCount = parseInt(container.querySelector('.likes-count').textContent);
+            if (likesCount > 0) {
+                likesPopup.style.display = 'block';
+                
+                // Show loading state
+                likesLoading.style.display = 'flex';
+                likesList.style.display = 'none';
+                
+                try {
+                    // Fetch users who liked the post
+                    const response = await fetch(`/api/posts/${postId}/likes`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // Clear previous content
+                        likesList.innerHTML = '';
+                        
+                        // Add users to the list
+                        if (data.users && data.users.length > 0) {
+                            data.users.forEach(user => {
+                                const userElement = document.createElement('div');
+                                userElement.className = 'like-user';
+                                
+                                let avatarContent = '';
+                                if (user.profile_pic) {
+                                    avatarContent = `<img src="${user.profile_pic}" alt="${user.name}" class="like-user-avatar">`;
+                                } else {
+                                    avatarContent = `<div class="like-user-avatar">${user.name.substring(0, 2).toUpperCase()}</div>`;
+                                }
+                                
+                                userElement.innerHTML = `
+                                    ${avatarContent}
+                                    <div class="like-user-info">
+                                        <div class="like-user-name">${user.name}</div>
+                                    </div>
+                                `;
+                                
+                                likesList.appendChild(userElement);
+                            });
+                        } else {
+                            likesList.innerHTML = '<div class="text-center py-3">No likes yet</div>';
+                        }
+                        
+                        // Hide loading, show list
+                        likesLoading.style.display = 'none';
+                        likesList.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error fetching likes:', error);
+                    likesList.innerHTML = '<div class="text-center py-3 text-danger">Error loading likes</div>';
+                    likesLoading.style.display = 'none';
+                    likesList.style.display = 'block';
+                }
+            }
+        });
+        
+        // Hide popup when mouse leaves
+        container.addEventListener('mouseleave', function() {
+            likesPopup.style.display = 'none';
+        });
+        
+        // Close button functionality
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                likesPopup.style.display = 'none';
+            });
+        }
+    });
+});
+
 // Like functionality for posts with AJAX - Optimistic UI updates
 const likeButtons = document.querySelectorAll('.post-action:first-child');
 likeButtons.forEach(button => {
