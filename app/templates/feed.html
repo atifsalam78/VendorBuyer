@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <div class="row">
         <!-- Main Content -->
-        <div class="col-lg-8 mx-auto">
+        <div class="col-lg-8">
             <!-- Feed Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3 mb-0">
@@ -354,6 +354,36 @@
                 {% endif %}
             </div>
         </div>
+        <!-- Right Sidebar -->
+        <div class="col-lg-4 d-none d-lg-block">
+            <div class="card shadow-sm mb-4 profile-sidebar-card">
+                {% if current_user_banner_pic %}
+                <div class="banner-wrapper">
+                    <img src="{{ current_user_banner_pic }}" alt="Banner" class="img-fluid rounded-top banner-image">
+                </div>
+                {% endif %}
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-2">
+                        {% if current_user_profile_pic %}
+                        <img src="{{ current_user_profile_pic }}" alt="Profile" class="rounded-circle me-3 sidebar-profile-pic">
+                        {% else %}
+                        <div class="bg-primary text-white d-flex align-items-center justify-content-center rounded-circle me-3 sidebar-profile-pic-fallback">
+                            {{ current_user_email[:2]|upper }}
+                        </div>
+                        {% endif %}
+                        <div>
+                            <div class="fw-bold sidebar-name">{{ current_user_name or (current_user_email.split('@')[0]) }}</div>
+                            {% if current_user_company_name %}
+                            <small class="text-muted">{{ current_user_company_name }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if current_user_tagline %}
+                    <p class="text-muted mb-0 sidebar-tagline">{{ current_user_tagline }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -559,6 +589,29 @@
 .emoji-added {
     box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
     transition: box-shadow 0.3s ease;
+}
+
+/* Sidebar card styles */
+.profile-sidebar-card .banner-image {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+}
+.sidebar-profile-pic {
+    width: 56px;
+    height: 56px;
+    object-fit: cover;
+}
+.sidebar-profile-pic-fallback {
+    width: 56px;
+    height: 56px;
+    font-size: 16px;
+}
+.sidebar-name {
+    font-size: 16px;
+}
+.sidebar-tagline {
+    font-size: 14px;
 }
 </style>
 

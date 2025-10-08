@@ -742,6 +742,29 @@ async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_d
         # Redirect to login page if no valid session
         return RedirectResponse(url="/", status_code=303)
 
+    # Fetch current user's profile and banner for sidebar card
+    current_user_name = current_user.email.split('@')[0]
+    current_user_tagline = None
+    current_user_company_name = None
+    current_user_banner_pic = None
+
+    try:
+        profile_result = await db.execute(select(Profile).where(Profile.user_id == current_user.id))
+        profile = profile_result.scalars().first()
+        if profile:
+            if profile.name:
+                current_user_name = profile.name
+            current_user_tagline = profile.tagline
+            current_user_company_name = profile.company_name
+
+        profile_image_result = await db.execute(select(ProfileImage).where(ProfileImage.user_id == current_user.id))
+        profile_image = profile_image_result.scalars().first()
+        if profile_image:
+            current_user_banner_pic = profile_image.banner_pic
+    except Exception:
+        # Fail silently; sidebar will render with available defaults
+        pass
+
     # Pagination settings
     posts_per_page = 10
     offset = (page - 1) * posts_per_page
@@ -940,6 +963,10 @@ async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_d
             "posts": formatted_posts,
             "current_user_email": current_user.email,
             "current_user_profile_pic": current_user_profile_pic,
+            "current_user_name": current_user_name,
+            "current_user_tagline": current_user_tagline,
+            "current_user_company_name": current_user_company_name,
+            "current_user_banner_pic": current_user_banner_pic,
             "current_page": page,
             "total_pages": total_pages,
             "total_posts": total_items,
