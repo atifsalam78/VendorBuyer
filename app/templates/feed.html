@@ -19,6 +19,77 @@
                 </div>
             </div>
 
+            <!-- Post Composer (only show if user is logged in) -->
+            {% if current_user_email %}
+            <div class="post-composer card mb-4 shadow-sm">
+                <div class="card-header bg-transparent">
+                    <div class="d-flex align-items-center">
+                        {% if current_user_profile_pic %}
+                        <img src="{{ current_user_profile_pic }}" alt="Profile" class="rounded-circle me-3" style="width: 40px; height: 40px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-primary text-white d-flex align-items-center justify-content-center rounded-circle me-3" style="width: 40px; height: 40px; font-size: 14px;">
+                            {{ current_user_email[:2]|upper }}
+                        </div>
+                        {% endif %}
+                        <h6 class="mb-0 fw-bold">Create a New Post</h6>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <form id="create-post-form" enctype="multipart/form-data">
+                        <input type="hidden" name="email" value="{{ current_user_email }}">
+                        
+                        <!-- Post Content -->
+                        <div class="mb-3">
+                            <textarea 
+                                name="content" 
+                                class="form-control" 
+                                placeholder="What's on your mind?" 
+                                required
+                                rows="3"
+                                maxlength="2000"
+                                style="resize: vertical;"></textarea>
+                            <div class="form-text text-end">
+                                <span id="content-counter">0</span>/2000 characters
+                            </div>
+                        </div>
+                        
+                        <!-- Image Upload -->
+                        <div class="mb-3">
+                            <input type="file" name="post_image" id="post-image-input" class="form-control" accept="image/*">
+                            <div class="form-text">Optional: Add an image to your post (max 10MB)</div>
+                        </div>
+                        
+                        <!-- Image Preview -->
+                        <div id="image-preview" class="mb-3" style="display: none;">
+                            <div class="position-relative d-inline-block">
+                                <img id="preview-image" src="" alt="Preview" class="img-fluid rounded" style="max-height: 200px;">
+                                <button type="button" id="remove-image" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Visibility -->
+                        <div class="mb-3">
+                            <label class="form-label">Visibility</label>
+                            <select name="visibility" class="form-select">
+                                <option value="public" selected>Public - Everyone can see this post</option>
+                                <option value="private">Private - Only you can see this post</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Submit Button -->
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary" id="submit-post-btn">
+                                <i class="fas fa-paper-plane me-2"></i>
+                                Share Post
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
             <!-- Posts Feed -->
             <div class="posts-feed">
                 {% if posts %}
@@ -441,12 +512,183 @@
     margin-top: 2px;
     word-break: break-word;
 }
+
+/* Post Composer Styles */
+.post-composer {
+    border: 1px solid #e0e0e0;
+}
+
+.post-composer .card-header {
+    border-bottom: 1px solid #f0f0f0;
+    padding: 1rem;
+}
+
+.post-composer textarea {
+    border: none;
+    box-shadow: none;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.post-composer textarea:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+#image-preview {
+    max-width: 100%;
+}
+
+#remove-image {
+    opacity: 0.8;
+    transition: opacity 0.2s;
+}
+
+#remove-image:hover {
+    opacity: 1;
+}
+
+#content-counter {
+    font-weight: 500;
+}
+
+.character-warning {
+    color: #dc3545 !important;
+}
 </style>
 
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Post Composer functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const createPostForm = document.getElementById('create-post-form');
+    if (!createPostForm) return;
+    const imageInput = document.getElementById('post-image-input');
+    const imagePreview = document.getElementById('image-preview');
+    const previewImage = document.getElementById('preview-image');
+    const removeImageBtn = document.getElementById('remove-image');
+    const contentTextarea = createPostForm.querySelector('[name="content"]');
+    const contentCounter = document.getElementById('content-counter');
+    const submitBtn = document.getElementById('submit-post-btn');
+    
+    // Character counter
+    if (contentTextarea && contentCounter) {
+        contentTextarea.addEventListener('input', function() {
+            const length = this.value.length;
+            contentCounter.textContent = length;
+            
+            if (length > 1800) {
+                contentCounter.classList.add('character-warning');
+            } else {
+                contentCounter.classList.remove('character-warning');
+            }
+        });
+    }
+    
+    // Image preview functionality
+    if (imageInput && imagePreview && previewImage) {
+        imageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    alert('Image size must be less than 10MB');
+                    imageInput.value = '';
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    previewImage.src = ev.target.result;
+                    imagePreview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreview.style.display = 'none';
+                previewImage.src = '';
+            }
+        });
+    }
+    
+    // Remove image functionality
+    if (removeImageBtn) {
+        removeImageBtn.addEventListener('click', function() {
+            if (imageInput) imageInput.value = '';
+            if (imagePreview) imagePreview.style.display = 'none';
+            if (previewImage) previewImage.src = '';
+        });
+    }
+    
+    // Form submission
+    createPostForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(createPostForm);
+        
+        // Show loading state
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Posting...';
+        }
+        
+        try {
+            const response = await fetch('/create-post', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (response.ok) {
+                // Reset form
+                createPostForm.reset();
+                if (contentCounter) {
+                    contentCounter.textContent = '0';
+                    contentCounter.classList.remove('character-warning');
+                }
+                if (imagePreview) imagePreview.style.display = 'none';
+                if (previewImage) previewImage.src = '';
+                
+                // Show success message
+                const alert = document.createElement('div');
+                alert.className = 'alert alert-success alert-dismissible fade show mt-2';
+                alert.innerHTML = `
+                    <i class="fas fa-check-circle me-2"></i>
+                    Post created successfully!
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                `;
+                
+                createPostForm.parentNode.insertBefore(alert, createPostForm);
+                
+                // Auto-dismiss after 3 seconds
+                setTimeout(() => {
+                    if (alert.parentNode) {
+                        alert.remove();
+                    }
+                }, 3000);
+                
+                // Refresh the page to show the new post
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1200);
+                
+            } else {
+                const errorText = await response.text();
+                console.error('Failed to create post:', errorText);
+                alert('Error creating post. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error creating post:', error);
+            alert('Error creating post. Please try again.');
+        } finally {
+            // Reset button state
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane me-2"></i>Share Post';
+            }
+        }
+    });
+});
+
 // Likes and Comments popup functionality
 document.addEventListener('DOMContentLoaded', function() {
     // Function to initialize popup functionality for likes and comments
