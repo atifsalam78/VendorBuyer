@@ -45,6 +45,7 @@
                     <form id="create-post-form" action="/create-post" method="post" enctype="multipart/form-data">
                         <input type="hidden" name="email" value="{{ current_user_email }}">
                         <input type="hidden" name="visibility" id="post-visibility-input" value="public">
+                        <input type="hidden" name="location" id="post-location-input" value="">
                         
                         <!-- Post Content -->
                         <div class="mb-4">
@@ -124,6 +125,12 @@
                                 <small class="text-muted">
                                     <i class="far fa-clock me-1"></i>
                                     {{ post.created_at.strftime('%b %d, %Y at %H:%M') }}
+                                    {% if post.location %}
+                                    <span class="ms-2">
+                                        <i class="fas fa-map-marker-alt me-1"></i>
+                                        {{ post.location }}
+                                    </span>
+                                    {% endif %}
                                 </small>
                             </div>
                             <div class="dropdown">
@@ -644,6 +651,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const addEmojiBtn = document.getElementById('add-emoji-btn');
     const visibilityDropdown = document.getElementById('post-visibility');
     const visibilityInput = document.getElementById('post-visibility-input');
+    const addLocationBtn = document.getElementById('add-location-btn');
+    const locationInput = document.getElementById('post-location-input');
     let emojiPicker = null;
     
     // Character counter
@@ -783,6 +792,102 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 }, 300);
             }
+        });
+    }
+
+    // Handle location button (mirror profile page UI)
+    if (addLocationBtn && locationInput) {
+        addLocationBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+
+            // Add animation class to button
+            addLocationBtn.classList.add('active-tool');
+
+            // Create location dropdown
+            const locationDropdown = document.createElement('div');
+            locationDropdown.className = 'location-dropdown p-3 bg-white shadow rounded';
+            locationDropdown.style.position = 'absolute';
+            locationDropdown.style.zIndex = '1050';
+            locationDropdown.style.bottom = '60px';
+            locationDropdown.style.left = '50px';
+            locationDropdown.style.width = '250px';
+            locationDropdown.style.opacity = '0';
+            locationDropdown.style.transform = 'translateY(10px)';
+            locationDropdown.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+            // Add location search input and suggestions
+            locationDropdown.innerHTML = `
+                <div class="mb-2">
+                    <input type="text" class="form-control" placeholder="Search for a location..." id="location-search">
+                </div>
+                <div class="location-suggestions">
+                    <div class="d-flex align-items-center p-2 location-item" data-location="New York, NY">
+                        <i class="fas fa-map-marker-alt me-2 text-danger"></i>
+                        <span>New York, NY</span>
+                    </div>
+                    <div class="d-flex align-items-center p-2 location-item" data-location="San Francisco, CA">
+                        <i class="fas fa-map-marker-alt me-2 text-danger"></i>
+                        <span>San Francisco, CA</span>
+                    </div>
+                    <div class="d-flex align-items-center p-2 location-item" data-location="Chicago, IL">
+                        <i class="fas fa-map-marker-alt me-2 text-danger"></i>
+                        <span>Chicago, IL</span>
+                    </div>
+                    <div class="d-flex align-items-center p-2 location-item" data-location="Current Location">
+                        <i class="fas fa-crosshairs me-2 text-primary"></i>
+                        <span>Use current location</span>
+                    </div>
+                </div>
+            `;
+
+            // Add to DOM near the button
+            addLocationBtn.parentNode.appendChild(locationDropdown);
+
+            // Trigger animation
+            setTimeout(() => {
+                locationDropdown.style.opacity = '1';
+                locationDropdown.style.transform = 'translateY(0)';
+            }, 10);
+
+            // Add event listeners to location items
+            const locationItems = locationDropdown.querySelectorAll('.location-item');
+            locationItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const selectedLocation = this.getAttribute('data-location');
+
+                    // Set hidden input value for backend
+                    locationInput.value = selectedLocation;
+
+                    // Optional subtle highlight effect on textarea
+                    if (postContent) {
+                        postContent.classList.add('location-added');
+                        setTimeout(() => {
+                            postContent.classList.remove('location-added');
+                        }, 300);
+                    }
+
+                    // Close dropdown with animation
+                    locationDropdown.style.opacity = '0';
+                    locationDropdown.style.transform = 'translateY(10px)';
+                    setTimeout(() => {
+                        locationDropdown.remove();
+                        addLocationBtn.classList.remove('active-tool');
+                    }, 300);
+                });
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', function closeLocationDropdown(ev) {
+                if (!locationDropdown.contains(ev.target) && ev.target !== addLocationBtn) {
+                    locationDropdown.style.opacity = '0';
+                    locationDropdown.style.transform = 'translateY(10px)';
+                    setTimeout(() => {
+                        locationDropdown.remove();
+                        addLocationBtn.classList.remove('active-tool');
+                        document.removeEventListener('click', closeLocationDropdown);
+                    }, 300);
+                }
+            });
         });
     }
     

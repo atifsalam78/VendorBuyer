@@ -172,6 +172,7 @@ async def migrate():
                     user_id INTEGER NOT NULL,
                     content TEXT NOT NULL,
                     image_url TEXT,
+                    location TEXT,
                     visibility TEXT DEFAULT 'public',
                     likes_count INTEGER DEFAULT 0,
                     comments_count INTEGER DEFAULT 0,
@@ -199,6 +200,9 @@ async def migrate():
                 result = await conn.execute(text("SELECT name FROM pragma_table_info('posts') WHERE name = 'visibility'"))
                 visibility_exists = result.fetchone() is not None
                 
+                result = await conn.execute(text("SELECT name FROM pragma_table_info('posts') WHERE name = 'location'"))
+                location_exists = result.fetchone() is not None
+
                 result = await conn.execute(text("SELECT name FROM pragma_table_info('posts') WHERE name = 'likes_count'"))
                 likes_count_exists = result.fetchone() is not None
                 
@@ -220,6 +224,10 @@ async def migrate():
                     await conn.execute(text("ALTER TABLE posts ADD COLUMN visibility TEXT DEFAULT 'public'"))
                     print("visibility column added to posts table.")
                 
+                if not location_exists:
+                    await conn.execute(text("ALTER TABLE posts ADD COLUMN location TEXT"))
+                    print("location column added to posts table.")
+
                 if not likes_count_exists:
                     await conn.execute(text("ALTER TABLE posts ADD COLUMN likes_count INTEGER DEFAULT 0"))
                     print("likes_count column added to posts table.")

@@ -15,6 +15,7 @@ from sqlalchemy import insert, update, delete, func
 # Import routers
 from app.routers import register, validate, taxonomy
 from app.deps import init_db, get_db, get_current_user_profile_pic
+from app.migrate import migrate
 from sqlalchemy import func
 from app.models import User, Profile, ProfileImage, Post, Like, Comment, Share
 from app.auth import verify_password, create_session, SESSION_COOKIE_NAME, delete_session, get_current_user
@@ -32,6 +33,8 @@ async def lifespan(app: FastAPI):
     
     # Initialize database
     await init_db()
+    # Run migrations to ensure schema is up to date
+    await migrate()
     
     yield
     
@@ -489,6 +492,7 @@ async def create_post(
     request: Request,
     email: str = Form(...),
     content: str = Form(...),
+    location: str = Form(None),
     visibility: str = Form("public"),
     post_image: UploadFile = File(None),
     db: AsyncSession = Depends(get_db)
@@ -519,6 +523,7 @@ async def create_post(
         user_id=user.id,
         content=content,
         image_url=image_url,
+        location=location,
         visibility=visibility
     )
     
@@ -871,6 +876,7 @@ async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_d
                 "content": post.content,
                 "image_url": post.image_url,
                 "visibility": post.visibility,
+                "location": post.location,
                 "likes_count": likes_count,
                 "comments_count": post.comments_count,
                 "shares_count": post.shares_count,
@@ -942,6 +948,7 @@ async def feed(request: Request, page: int = 1, db: AsyncSession = Depends(get_d
                 "content": post.content,
                 "image_url": post.image_url,
                 "visibility": post.visibility,
+                "location": post.location,
                 "likes_count": likes_count,
                 "comments_count": post.comments_count,
                 "shares_count": post.shares_count,

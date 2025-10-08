@@ -93,6 +93,7 @@ class Post(Base):
     user_id = Column(Integer, ForeignKey("users.id"), index=True)  # Indexed for high traffic
     content = Column(Text, nullable=False)
     image_url = Column(String, nullable=True)
+    location = Column(String, nullable=True)
     visibility = Column(String, default="public")  # public, connections, private
     likes_count = Column(Integer, default=0)
     comments_count = Column(Integer, default=0)
