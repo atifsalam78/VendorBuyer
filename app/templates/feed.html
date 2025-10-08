@@ -592,11 +592,20 @@
 }
 
 /* Sidebar card styles */
-.profile-sidebar-card .banner-wrapper { overflow: hidden; }
+.profile-sidebar-card .banner-wrapper {
+    height: 100px;
+    overflow: hidden;
+    background-color: #f8f9fa;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
 .profile-sidebar-card .banner-image {
     width: 100%;
-    height: 100px;
-    object-fit: cover;
+    height: 100%;
+    object-fit: contain;
 }
 .sidebar-profile-pic {
     width: 56px;
