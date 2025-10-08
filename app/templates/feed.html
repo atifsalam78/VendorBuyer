@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <div class="row">
         <!-- Main Content -->
-        <div class="col-lg-8">
+        <div class="col-lg-9">
             <!-- Feed Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h1 class="h3 mb-0">
@@ -354,8 +354,8 @@
                 {% endif %}
             </div>
         </div>
-        <!-- Right Sidebar -->
-        <div class="col-lg-4 d-none d-lg-block">
+        <!-- Left Sidebar -->
+        <div class="col-lg-3 d-none d-lg-block order-lg-first">
             <div class="card shadow-sm mb-4 profile-sidebar-card">
                 {% if current_user_banner_pic %}
                 <div class="banner-wrapper">
@@ -592,9 +592,10 @@
 }
 
 /* Sidebar card styles */
+.profile-sidebar-card .banner-wrapper { overflow: hidden; }
 .profile-sidebar-card .banner-image {
     width: 100%;
-    height: 120px;
+    height: 100px;
     object-fit: cover;
 }
 .sidebar-profile-pic {
