@@ -32,58 +32,57 @@
                         </div>
                         {% endif %}
                         <h6 class="mb-0 fw-bold">Create a New Post</h6>
+                        <div class="ms-auto">
+                            <select class="form-select form-select-sm" id="post-visibility">
+                                <option value="public">🌎 Public</option>
+                                <option value="connections">👥 Connections Only</option>
+                                <option value="private">🔒 Private</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="card-body">
-                    <form id="create-post-form" enctype="multipart/form-data">
+                    <form id="create-post-form" action="/create-post" method="post" enctype="multipart/form-data">
                         <input type="hidden" name="email" value="{{ current_user_email }}">
+                        <input type="hidden" name="visibility" id="post-visibility-input" value="public">
                         
                         <!-- Post Content -->
-                        <div class="mb-3">
-                            <textarea 
-                                name="content" 
-                                class="form-control" 
-                                placeholder="What's on your mind?" 
-                                required
-                                rows="3"
-                                maxlength="2000"
-                                style="resize: vertical;"></textarea>
-                            <div class="form-text text-end">
-                                <span id="content-counter">0</span>/2000 characters
-                            </div>
-                        </div>
-                        
-                        <!-- Image Upload -->
-                        <div class="mb-3">
-                            <input type="file" name="post_image" id="post-image-input" class="form-control" accept="image/*">
-                            <div class="form-text">Optional: Add an image to your post (max 10MB)</div>
+                        <div class="mb-4">
+                            <textarea class="form-control border-0 bg-light p-3" id="post-content" name="content" rows="5" placeholder="What would you like to share with your network?" required style="border-radius: 15px;"></textarea>
                         </div>
                         
                         <!-- Image Preview -->
-                        <div id="image-preview" class="mb-3" style="display: none;">
-                            <div class="position-relative d-inline-block">
-                                <img id="preview-image" src="" alt="Preview" class="img-fluid rounded" style="max-height: 200px;">
-                                <button type="button" id="remove-image" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2">
+                        <div class="image-preview-container mb-4 d-none" id="image-preview-container">
+                            <div class="position-relative">
+                                <img id="image-preview" class="img-fluid rounded" src="" alt="Preview">
+                                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-2 rounded-circle" id="remove-image">
                                     <i class="fas fa-times"></i>
                                 </button>
                             </div>
                         </div>
                         
-                        <!-- Visibility -->
-                        <div class="mb-3">
-                            <label class="form-label">Visibility</label>
-                            <select name="visibility" class="form-select">
-                                <option value="public" selected>Public - Everyone can see this post</option>
-                                <option value="private">Private - Only you can see this post</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Submit Button -->
-                        <div class="d-flex justify-content-end">
-                            <button type="submit" class="btn btn-primary" id="submit-post-btn">
-                                <i class="fas fa-paper-plane me-2"></i>
-                                Share Post
-                            </button>
+                        <!-- Actions & Submit -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="post-actions">
+                                <button type="button" class="btn btn-light rounded-circle me-2" id="add-image-btn" title="Add Image">
+                                    <i class="fas fa-image"></i>
+                                </button>
+                                <button type="button" class="btn btn-light rounded-circle me-2" id="add-emoji-btn" title="Add Emoji">
+                                    <i class="far fa-smile"></i>
+                                </button>
+                                <button type="button" class="btn btn-light rounded-circle me-2" id="add-tag-btn" title="Tag People">
+                                    <i class="fas fa-user-tag"></i>
+                                </button>
+                                <button type="button" class="btn btn-light rounded-circle me-2" id="add-location-btn" title="Add Location">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                </button>
+                                <input type="file" id="post-image" name="post_image" class="d-none" accept="image/*">
+                            </div>
+                            <div>
+                                <button type="submit" class="btn btn-primary px-4" id="submit-post-btn">
+                                    <i class="fas fa-paper-plane me-2"></i>Share
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>
@@ -555,6 +554,12 @@
 .character-warning {
     color: #dc3545 !important;
 }
+
+/* Subtle highlight when emoji inserted */
+.emoji-added {
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+    transition: box-shadow 0.3s ease;
+}
 </style>
 
 {% endblock %}
@@ -565,17 +570,22 @@
 document.addEventListener('DOMContentLoaded', function() {
     const createPostForm = document.getElementById('create-post-form');
     if (!createPostForm) return;
-    const imageInput = document.getElementById('post-image-input');
+    const addImageBtn = document.getElementById('add-image-btn');
+    const postImageInput = document.getElementById('post-image');
+    const imagePreviewContainer = document.getElementById('image-preview-container');
     const imagePreview = document.getElementById('image-preview');
-    const previewImage = document.getElementById('preview-image');
     const removeImageBtn = document.getElementById('remove-image');
-    const contentTextarea = createPostForm.querySelector('[name="content"]');
+    const postContent = document.getElementById('post-content');
     const contentCounter = document.getElementById('content-counter');
     const submitBtn = document.getElementById('submit-post-btn');
+    const addEmojiBtn = document.getElementById('add-emoji-btn');
+    const visibilityDropdown = document.getElementById('post-visibility');
+    const visibilityInput = document.getElementById('post-visibility-input');
+    let emojiPicker = null;
     
     // Character counter
-    if (contentTextarea && contentCounter) {
-        contentTextarea.addEventListener('input', function() {
+    if (postContent && contentCounter) {
+        postContent.addEventListener('input', function() {
             const length = this.value.length;
             contentCounter.textContent = length;
             
@@ -587,26 +597,31 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Image preview functionality
-    if (imageInput && imagePreview && previewImage) {
-        imageInput.addEventListener('change', function(e) {
+    // Image add & preview functionality (match profile behavior)
+    if (addImageBtn && postImageInput) {
+        addImageBtn.addEventListener('click', function() {
+            postImageInput.click();
+        });
+    }
+
+    if (postImageInput && imagePreview && imagePreviewContainer) {
+        postImageInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
                 if (file.size > 10 * 1024 * 1024) { // 10MB limit
                     alert('Image size must be less than 10MB');
-                    imageInput.value = '';
+                    postImageInput.value = '';
                     return;
                 }
-                
                 const reader = new FileReader();
                 reader.onload = function(ev) {
-                    previewImage.src = ev.target.result;
-                    imagePreview.style.display = 'block';
+                    imagePreview.src = ev.target.result;
+                    imagePreviewContainer.classList.remove('d-none');
                 };
                 reader.readAsDataURL(file);
             } else {
-                imagePreview.style.display = 'none';
-                previewImage.src = '';
+                imagePreviewContainer.classList.add('d-none');
+                imagePreview.src = '';
             }
         });
     }
@@ -614,9 +629,97 @@ document.addEventListener('DOMContentLoaded', function() {
     // Remove image functionality
     if (removeImageBtn) {
         removeImageBtn.addEventListener('click', function() {
-            if (imageInput) imageInput.value = '';
-            if (imagePreview) imagePreview.style.display = 'none';
-            if (previewImage) previewImage.src = '';
+            if (postImageInput) postImageInput.value = '';
+            if (imagePreviewContainer) imagePreviewContainer.classList.add('d-none');
+            if (imagePreview) imagePreview.src = '';
+        });
+    }
+
+    // Sync visibility dropdown with hidden input
+    if (visibilityDropdown && visibilityInput) {
+        visibilityDropdown.addEventListener('change', function() {
+            visibilityInput.value = this.value;
+        });
+    }
+
+    // Emoji picker functionality (similar to profile page)
+    if (addEmojiBtn && postContent) {
+        addEmojiBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!emojiPicker) {
+                emojiPicker = document.createElement('emoji-picker');
+                emojiPicker.classList.add('emoji-picker');
+                emojiPicker.style.position = 'absolute';
+                emojiPicker.style.zIndex = '1050';
+                emojiPicker.style.bottom = '60px';
+                emojiPicker.style.left = '0';
+                emojiPicker.style.boxShadow = '0 0 10px rgba(0,0,0,0.1)';
+                emojiPicker.style.borderRadius = '10px';
+                emojiPicker.style.opacity = '0';
+                emojiPicker.style.transform = 'translateY(10px)';
+                emojiPicker.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+
+                // Append near the button
+                addEmojiBtn.parentNode.appendChild(emojiPicker);
+
+                // Trigger animation
+                setTimeout(() => {
+                    emojiPicker.style.opacity = '1';
+                    emojiPicker.style.transform = 'translateY(0)';
+                }, 10);
+
+                // Handle emoji selection
+                emojiPicker.addEventListener('emoji-click', function(event) {
+                    const emoji = event.detail.unicode;
+                    const cursorPos = postContent.selectionStart || postContent.value.length;
+                    const text = postContent.value;
+                    const newText = text.slice(0, cursorPos) + emoji + text.slice(cursorPos);
+                    postContent.value = newText;
+                    postContent.focus();
+                    postContent.selectionStart = cursorPos + emoji.length;
+                    postContent.selectionEnd = cursorPos + emoji.length;
+
+                    // Subtle highlight to indicate insertion
+                    postContent.classList.add('emoji-added');
+                    setTimeout(() => {
+                        postContent.classList.remove('emoji-added');
+                    }, 300);
+
+                    // Hide emoji picker after selection with animation
+                    emojiPicker.style.opacity = '0';
+                    emojiPicker.style.transform = 'translateY(10px)';
+                    setTimeout(() => {
+                        if (emojiPicker) {
+                            emojiPicker.remove();
+                            emojiPicker = null;
+                        }
+                    }, 300);
+                });
+            } else {
+                // Hide with animation
+                emojiPicker.style.opacity = '0';
+                emojiPicker.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    if (emojiPicker) {
+                        emojiPicker.remove();
+                        emojiPicker = null;
+                    }
+                }, 300);
+            }
+        });
+
+        // Close emoji picker when clicking outside
+        document.addEventListener('click', function(e) {
+            if (emojiPicker && !emojiPicker.contains(e.target) && e.target !== addEmojiBtn) {
+                emojiPicker.style.opacity = '0';
+                emojiPicker.style.transform = 'translateY(10px)';
+                setTimeout(() => {
+                    if (emojiPicker) {
+                        emojiPicker.remove();
+                        emojiPicker = null;
+                    }
+                }, 300);
+            }
         });
     }
     
@@ -638,15 +741,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: formData
             });
             
-            if (response.ok) {
+            // Treat successful responses and redirects (303) as success
+            if (response.ok || response.status === 303 || response.redirected) {
                 // Reset form
                 createPostForm.reset();
                 if (contentCounter) {
                     contentCounter.textContent = '0';
                     contentCounter.classList.remove('character-warning');
                 }
-                if (imagePreview) imagePreview.style.display = 'none';
-                if (previewImage) previewImage.src = '';
+                // Hide and reset image preview correctly
+                if (imagePreviewContainer) imagePreviewContainer.classList.add('d-none');
+                if (imagePreview) imagePreview.src = '';
                 
                 // Show success message
                 const alert = document.createElement('div');
